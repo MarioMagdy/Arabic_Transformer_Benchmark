@@ -1,0 +1,270 @@
+{
+  "metadata": {
+    "name": "Arabic Intent Benchmark",
+    "version": "1.1.0",
+    "description": "A fixed-label zero-shot Arabic intent benchmark for comparing encoder models on sports, politics, business, greeting, shipping, returns, product recommendation, and appointment intents.",
+    "default_label_set": "default"
+  },
+  "label_sets": {
+    "default": [
+      {
+        "key": "sports",
+        "label": "أخبار أو أحداث رياضية مثل المباريات والأهداف والبطولات واللاعبين والمدربين"
+      },
+      {
+        "key": "politics",
+        "label": "سياسة وحكومة وتشريعات وانتخابات وبرلمان وقرارات رسمية واتفاقيات دولية"
+      },
+      {
+        "key": "business",
+        "label": "أعمال ومال وشركات وأسهم واستثمار وبنوك ومبيعات ونمو تجاري"
+      },
+      {
+        "key": "greeting",
+        "label": "تحية وبداية محادثة وطلب مساعدة عام مثل مرحبا وأهلا وصباح الخير"
+      },
+      {
+        "key": "shipping",
+        "label": "استفسار عن الشحن والتوصيل ومدة الوصول ورسوم الشحن ومناطق الخدمة"
+      },
+      {
+        "key": "returns",
+        "label": "إرجاع أو استبدال أو استرداد مبلغ أو مشكلة في منتج يحتاج إرجاعًا"
+      },
+      {
+        "key": "product_recommendation",
+        "label": "طلب توصية أو نصيحة لاختيار منتج مناسب حسب الاحتياج أو الحالة"
+      },
+      {
+        "key": "appointment",
+        "label": "حجز أو تأكيد أو تعديل أو إلغاء موعد أو طلب إعادة جدولة"
+      }
+    ]
+  },
+  "tests": [
+    {
+      "id": "S1",
+      "text": "هذه مباراة تنس طاولة رائعة جدًا",
+      "expected": "sports",
+      "category": "sports",
+      "label_set": "default"
+    },
+    {
+      "id": "S2",
+      "text": "سجّل اللاعب هدفًا رائعًا في الدقيقة التسعين من مباراة كرة القدم",
+      "expected": "sports",
+      "category": "sports",
+      "label_set": "default"
+    },
+    {
+      "id": "S3",
+      "text": "فاز المنتخب المغربي بثلاثية نظيفة في التصفيات القارية",
+      "expected": "sports",
+      "category": "sports",
+      "label_set": "default"
+    },
+    {
+      "id": "S4",
+      "text": "تأهلت اللاعبة إلى نهائي البطولة بعد أداء قوي في نصف النهائي",
+      "expected": "sports",
+      "category": "sports",
+      "label_set": "default"
+    },
+    {
+      "id": "S5",
+      "text": "أعلن النادي عن تعاقده مع مدرب جديد قبل بداية الموسم",
+      "expected": "sports",
+      "category": "sports",
+      "label_set": "default"
+    },
+    {
+      "id": "P1",
+      "text": "أعلن الرئيس عن خطة إصلاحية جديدة تشمل تغييرات في قانون الانتخابات",
+      "expected": "politics",
+      "category": "politics",
+      "label_set": "default"
+    },
+    {
+      "id": "P2",
+      "text": "صوّت البرلمان على مشروع قانون لزيادة الضرائب على الشركات الكبرى",
+      "expected": "politics",
+      "category": "politics",
+      "label_set": "default"
+    },
+    {
+      "id": "P3",
+      "text": "اجتمع الوزراء لمناقشة مشروع الموازنة العامة للدولة للعام المقبل",
+      "expected": "politics",
+      "category": "politics",
+      "label_set": "default"
+    },
+    {
+      "id": "P4",
+      "text": "طالبت المعارضة بإجراء انتخابات مبكرة بعد الأزمة السياسية الأخيرة",
+      "expected": "politics",
+      "category": "politics",
+      "label_set": "default"
+    },
+    {
+      "id": "P5",
+      "text": "صادقت الحكومة على اتفاقية تعاون إقليمي جديدة مع الدول المجاورة",
+      "expected": "politics",
+      "category": "politics",
+      "label_set": "default"
+    },
+    {
+      "id": "B1",
+      "text": "أعلنت الشركة عن أرباح قياسية هذا الربع بفضل نمو التجارة الإلكترونية",
+      "expected": "business",
+      "category": "business",
+      "label_set": "default"
+    },
+    {
+      "id": "B2",
+      "text": "ارتفع سعر سهم أرامكو اليوم في تداولات البورصة السعودية",
+      "expected": "business",
+      "category": "business",
+      "label_set": "default"
+    },
+    {
+      "id": "B3",
+      "text": "حصلت الشركة الناشئة على تمويل جديد بقيمة عشرة ملايين دولار",
+      "expected": "business",
+      "category": "business",
+      "label_set": "default"
+    },
+    {
+      "id": "B4",
+      "text": "تراجعت أرباح البنك هذا العام بسبب ارتفاع تكاليف التمويل",
+      "expected": "business",
+      "category": "business",
+      "label_set": "default"
+    },
+    {
+      "id": "B5",
+      "text": "أعلنت المنصة عن توسعها في السوق المصرية وزيادة عدد العملاء",
+      "expected": "business",
+      "category": "business",
+      "label_set": "default"
+    },
+    {
+      "id": "G1",
+      "text": "مرحبًا، كيف حالك؟",
+      "expected": "greeting",
+      "category": "greeting",
+      "label_set": "default"
+    },
+    {
+      "id": "G2",
+      "text": "أهلًا وسهلًا، أنا بحاجة للمساعدة",
+      "expected": "greeting",
+      "category": "greeting",
+      "label_set": "default"
+    },
+    {
+      "id": "G3",
+      "text": "صباح الخير، عندي استفسار بسيط لو سمحت",
+      "expected": "greeting",
+      "category": "greeting",
+      "label_set": "default"
+    },
+    {
+      "id": "G4",
+      "text": "السلام عليكم، هل يمكن أن تساعدني؟",
+      "expected": "greeting",
+      "category": "greeting",
+      "label_set": "default"
+    },
+    {
+      "id": "G5",
+      "text": "أهلين، ممكن أكلم خدمة العملاء؟",
+      "expected": "greeting",
+      "category": "greeting",
+      "label_set": "default"
+    },
+    {
+      "id": "SH1",
+      "text": "كم مدة الشحن إلى القاهرة؟",
+      "expected": "shipping",
+      "category": "faq",
+      "label_set": "default"
+    },
+    {
+      "id": "SH2",
+      "text": "هل التوصيل متاح إلى الإسكندرية خلال يومين؟",
+      "expected": "shipping",
+      "category": "faq",
+      "label_set": "default"
+    },
+    {
+      "id": "SH3",
+      "text": "ما تكلفة الشحن الدولي إلى السعودية؟",
+      "expected": "shipping",
+      "category": "faq",
+      "label_set": "default"
+    },
+    {
+      "id": "R1",
+      "text": "هل يمكنني إرجاع المنتج إذا كان به عيب؟",
+      "expected": "returns",
+      "category": "faq",
+      "label_set": "default"
+    },
+    {
+      "id": "R2",
+      "text": "أريد استبدال المقاس، ما هي خطوات الإرجاع؟",
+      "expected": "returns",
+      "category": "faq",
+      "label_set": "default"
+    },
+    {
+      "id": "R3",
+      "text": "هل أستطيع استرداد المبلغ بعد إعادة الطلب؟",
+      "expected": "returns",
+      "category": "faq",
+      "label_set": "default"
+    },
+    {
+      "id": "PR1",
+      "text": "بشرتي دهنية ومعي حبوب، أي كريم تنصحني؟",
+      "expected": "product_recommendation",
+      "category": "hard",
+      "label_set": "default"
+    },
+    {
+      "id": "PR2",
+      "text": "أبي لابتوب خفيف للدراسة والشغل، شو تقترحون؟",
+      "expected": "product_recommendation",
+      "category": "hard",
+      "label_set": "default"
+    },
+    {
+      "id": "PR3",
+      "text": "شعري جاف جدًا، ما المنتج المناسب للعناية اليومية؟",
+      "expected": "product_recommendation",
+      "category": "hard",
+      "label_set": "default"
+    },
+    {
+      "id": "A1",
+      "text": "عندي موعد الأسبوع القادم، أحتاج تأكيد",
+      "expected": "appointment",
+      "category": "hard",
+      "label_set": "default"
+    },
+    {
+      "id": "A2",
+      "text": "أريد تغيير موعد الحجز إلى يوم الخميس مساءً",
+      "expected": "appointment",
+      "category": "hard",
+      "label_set": "default"
+    },
+    {
+      "id": "A3",
+      "text": "ممكن نلغي الموعد ونحجز واحد جديد الأسبوع الجاي؟",
+      "expected": "appointment",
+      "category": "hard",
+      "label_set": "default"
+    }
+  ]
+}

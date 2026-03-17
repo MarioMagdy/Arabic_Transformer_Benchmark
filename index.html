@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Arabic Encoder Benchmark</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="./dashboard.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <section class="hero reveal">
+        <div class="hero-copy">
+          <p class="eyebrow">Arabic Encoder Benchmark</p>
+          <h1>Clear model comparison for Arabic intent classification.</h1>
+          <p class="hero-text">
+            This report focuses on the essentials only: who wins, how fast each
+            model is, where the tradeoffs are, and which intent categories are
+            hardest.
+          </p>
+          <div class="hero-actions">
+            <button class="primary-button" id="loadJsonButton" type="button">
+              Load Benchmark JSON
+            </button>
+            <a class="secondary-button" href="#leaderboardSection">
+              View Findings
+            </a>
+          </div>
+        </div>
+
+        <div class="hero-spotlight panel">
+          <div class="spotlight-header">
+            <span class="section-kicker">Executive Summary</span>
+            <span class="live-pill" id="dataSourcePill">Waiting For Data</span>
+          </div>
+          <div id="heroWinner"></div>
+        </div>
+      </section>
+
+      <section class="toolbar panel reveal">
+        <div class="toolbar-copy" id="toolbarSummary">
+          <p class="section-kicker">Current View</p>
+          <h2>Benchmark snapshot</h2>
+          <p class="muted">Loading benchmark details.</p>
+        </div>
+
+        <div class="toolbar-controls">
+          <div class="control-box">
+            <label for="categoryFilter">Category</label>
+            <select id="categoryFilter"></select>
+          </div>
+          <div class="control-box">
+            <label for="focusModel">Focus Model</label>
+            <select id="focusModel"></select>
+          </div>
+          <div class="control-box">
+            <label for="sortMetric">Sort Leaderboard</label>
+            <select id="sortMetric"></select>
+          </div>
+          <label class="toggle-card" for="showFailuresOnly">
+            <span class="toggle-copy">
+              <span class="toggle-label">Failures Only</span>
+              <span class="toggle-note">Applies to the lower detail sections.</span>
+            </span>
+            <input type="checkbox" id="showFailuresOnly" />
+          </label>
+        </div>
+      </section>
+
+      <section class="kpi-grid reveal" id="kpiSection"></section>
+
+      <section class="findings-grid reveal" id="findingsPanel"></section>
+
+      <section class="section-header reveal" id="leaderboardSection">
+        <div>
+          <p class="section-kicker">Section 01</p>
+          <h2>Leaderboard</h2>
+        </div>
+        <p>
+          The full ranking with only the metrics that matter for a fast
+          decision.
+        </p>
+      </section>
+
+      <section class="panel reveal">
+        <div id="leaderboard"></div>
+      </section>
+
+      <section class="section-header reveal">
+        <div>
+          <p class="section-kicker">Section 02</p>
+          <h2>Speed vs Quality</h2>
+        </div>
+        <p>
+          One chart to show the tradeoff between classification speed and accuracy.
+        </p>
+      </section>
+
+      <section class="panel reveal">
+        <div id="scatterChart"></div>
+      </section>
+
+      <section class="section-header reveal">
+        <div>
+          <p class="section-kicker">Section 03</p>
+          <h2>Category Accuracy</h2>
+        </div>
+        <p>
+          The fastest way to see which intent groups are easy and which ones
+          are unstable.
+        </p>
+      </section>
+
+      <section class="panel reveal">
+        <div id="heatmap"></div>
+      </section>
+
+      <section class="section-header reveal">
+        <div>
+          <p class="section-kicker">Section 04</p>
+          <h2>Sentence Explorer</h2>
+        </div>
+        <p>
+          Expand any Arabic example to inspect the exact predictions behind the
+          summary.
+        </p>
+      </section>
+
+      <section class="panel reveal">
+        <div id="testExplorer"></div>
+      </section>
+
+      <section class="section-header reveal">
+        <div>
+          <p class="section-kicker">Section 05</p>
+          <h2>Failure Analysis</h2>
+        </div>
+        <p>
+          Wrong predictions only, sorted by the most dangerous mistakes first.
+        </p>
+      </section>
+
+      <section class="panel reveal">
+        <div id="failurePanel"></div>
+      </section>
+
+      <footer class="footer reveal" id="footerMeta"></footer>
+    </main>
+
+    <input
+      id="jsonFileInput"
+      type="file"
+      accept="application/json,.json"
+      hidden
+    />
+    <div class="tooltip" id="tooltip" hidden></div>
+    <script type="module" src="./dashboard.js"></script>
+  </body>
+</html>

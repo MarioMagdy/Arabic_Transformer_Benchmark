@@ -1,0 +1,8 @@
+.venv/
+__pycache__/
+.pytest_cache/
+*.pyc
+*.pyo
+*.log
+node_modules/
+arabic_encoder_benchmark_results.json
