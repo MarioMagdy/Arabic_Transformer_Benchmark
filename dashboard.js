@@ -5,6 +5,7 @@ const SORT_OPTIONS = [
   { value: "macro_intent_accuracy_pct", label: "Macro Intent Accuracy" },
   { value: "overall_accuracy_pct", label: "Overall Accuracy" },
   { value: "avg_latency_ms", label: "Average Latency" },
+  { value: "benchmark_total_runtime_s", label: "Runtime Cost Proxy" },
   { value: "confident_accuracy_pct", label: "Confident Accuracy" },
   { value: "riskScore", label: "Risk Score" },
 ];
@@ -33,6 +34,7 @@ const elements = {
   findingsPanel: document.getElementById("findingsPanel"),
   leaderboard: document.getElementById("leaderboard"),
   scatterChart: document.getElementById("scatterChart"),
+  costChart: document.getElementById("costChart"),
   heatmap: document.getElementById("heatmap"),
   testExplorer: document.getElementById("testExplorer"),
   failurePanel: document.getElementById("failurePanel"),
@@ -164,6 +166,7 @@ function renderAll() {
   renderFindings();
   renderLeaderboard();
   renderScatterPlot();
+  renderCostChart();
   renderHeatmap();
   renderTestExplorer();
   renderFailurePanel();
@@ -191,6 +194,7 @@ function renderNoData(message) {
     elements.findingsPanel,
     elements.leaderboard,
     elements.scatterChart,
+    elements.costChart,
     elements.heatmap,
     elements.testExplorer,
     elements.failurePanel,
@@ -205,6 +209,7 @@ function prepareBenchmarkData(raw) {
   const thresholds = metadata.thresholds ?? { score: 0.6, margin: 0.04 };
   const rankingLookup = new Map((raw.ranking ?? []).map((entry) => [entry.model_name, entry.rank]));
   const categories = [...new Set((raw.tests ?? []).map((test) => test.category))];
+  const benchmarkTestCount = Number(metadata.num_tests ?? (raw.tests ?? []).length ?? 0);
 
   const models = (raw.models ?? []).map((model, index) => {
     const summary = model.summary ?? {};
@@ -242,13 +247,15 @@ function prepareBenchmarkData(raw) {
   const marginRange = getRange(models.map((model) => model.avg_margin ?? 0));
   const macroRange = getRange(models.map((model) => model.macro_intent_accuracy_pct ?? 0));
 
-  const enrichedModels = models.map((model) => {
+  const scoredModels = models.map((model) => {
     const speedScore = normalizeInverse(model.avg_latency_ms ?? 0, latencyRange);
     const marginScore = normalize(model.avg_margin ?? 0, marginRange);
     const macroScore = normalize(model.macro_intent_accuracy_pct ?? 0, macroRange);
     const confidenceScore = (model.confident_accuracy_pct ?? 0) / 100;
     const coverageScore = (model.coverage_above_threshold_pct ?? 0) / 100;
     const avgSpeedTestsPerSec = latencyToThroughput(model.avg_latency_ms);
+    const benchmarkInferenceRuntimeS = ((model.avg_latency_ms ?? 0) * benchmarkTestCount) / 1000;
+    const benchmarkTotalRuntimeS = (model.load_time_s ?? 0) + benchmarkInferenceRuntimeS;
     const balancedScore =
       macroScore * 40 +
       ((model.overall_accuracy_pct ?? 0) / 100) * 20 +
@@ -268,11 +275,22 @@ function prepareBenchmarkData(raw) {
     return {
       ...model,
       avg_speed_tests_per_sec: round(avgSpeedTestsPerSec, 2),
+      benchmark_inference_runtime_s: round(benchmarkInferenceRuntimeS, 3),
+      benchmark_total_runtime_s: round(benchmarkTotalRuntimeS, 3),
       speedScore: round(speedScore * 100, 1),
       balancedScore: round(balancedScore, 1),
       riskScore: round(riskScore, 1),
     };
   });
+
+  const cheapestRuntime = Math.min(...scoredModels.map((model) => model.benchmark_total_runtime_s ?? Number.POSITIVE_INFINITY));
+  const enrichedModels = scoredModels.map((model) => ({
+    ...model,
+    runtime_cost_multiple:
+      Number.isFinite(cheapestRuntime) && cheapestRuntime > 0
+        ? round((model.benchmark_total_runtime_s ?? 0) / cheapestRuntime, 2)
+        : 1,
+  }));
 
   const tests = (raw.tests ?? []).map((test) => {
     const modelResults = enrichedModels
@@ -316,6 +334,9 @@ function prepareBenchmarkData(raw) {
       [...enrichedModels].sort((a, b) => (b.balancedScore ?? 0) - (a.balancedScore ?? 0))[0] ?? null,
     fastest:
       [...enrichedModels].sort((a, b) => (a.avg_latency_ms ?? 0) - (b.avg_latency_ms ?? 0))[0] ?? null,
+    cheapest:
+      [...enrichedModels].sort((a, b) => (a.benchmark_total_runtime_s ?? 0) - (b.benchmark_total_runtime_s ?? 0))[0] ??
+      null,
     safest: [...enrichedModels].sort((a, b) => (a.riskScore ?? 0) - (b.riskScore ?? 0))[0] ?? null,
     bestConfidence:
       [...enrichedModels].sort(
@@ -529,8 +550,8 @@ function renderScatterPlot() {
   const width = 940;
   const height = 420;
   const padding = { top: 36, right: 52, bottom: 54, left: 62 };
-  const xRange = getRange(models.map((model) => model.avg_speed_tests_per_sec ?? 0));
-  const yRange = getRange(models.map((model) => model.macro_intent_accuracy_pct ?? 0));
+  const xRange = expandRange(getRange(models.map((model) => model.avg_speed_tests_per_sec ?? 0)), 0.1);
+  const yRange = expandRange(getRange(models.map((model) => model.macro_intent_accuracy_pct ?? 0)), 0.1);
   const maxRadius = Math.max(...models.map((model) => 10 + ((model.coverage_above_threshold_pct ?? 0) / 100) * 20));
   const pointInset = maxRadius + 8;
   const plotLeft = padding.left + pointInset;
@@ -620,6 +641,113 @@ function renderScatterPlot() {
       ${points}
     </svg>
     ${renderLegend(models)}
+  `;
+}
+
+function renderCostChart() {
+  const { metadata, winners } = state.prepared;
+  const models = [...state.prepared.models].sort(
+    (a, b) => (a.benchmark_total_runtime_s ?? 0) - (b.benchmark_total_runtime_s ?? 0)
+  );
+
+  if (!models.length) {
+    elements.costChart.innerHTML = renderEmpty("No runtime cost data available.");
+    return;
+  }
+
+  const maxTotal = Math.max(...models.map((model) => model.benchmark_total_runtime_s ?? 0), 1);
+  const axisTicks = buildAxisTicks([0, maxTotal]);
+
+  const axis = `
+    <div class="cost-axis">
+      ${axisTicks
+        .map(
+          (tick) => `
+            <span>${escapeHtml(formatAxisValue(tick.value, "seconds"))}</span>
+          `
+        )
+        .join("")}
+    </div>
+  `;
+
+  elements.costChart.innerHTML = `
+    <div class="leaderboard-toolbar">
+      <div>
+        <p class="section-kicker">Operational View</p>
+        <h3 class="card-title">${escapeHtml(
+          winners.cheapest?.model_name ?? "N/A"
+        )} is the lowest-cost model on this device</h3>
+      </div>
+      <p class="metric-note">
+        Proxy only: load time + average inference time across ${metadata.num_tests ?? 0} tests on
+        ${escapeHtml(String(metadata.device ?? "unknown"))}.
+      </p>
+    </div>
+    ${axis}
+    <div class="cost-grid">
+      ${models.map((model) => renderCostRow(model, maxTotal)).join("")}
+    </div>
+    <div class="chart-legend">
+      <span class="legend-item">
+        <span class="legend-swatch cost-load-swatch"></span>
+        <span>Load time</span>
+      </span>
+      <span class="legend-item">
+        <span class="legend-swatch cost-inference-swatch"></span>
+        <span>Inference time</span>
+      </span>
+    </div>
+  `;
+}
+
+function renderCostRow(model, maxTotal) {
+  const focused = state.focusModel === model.model_name;
+  const dimmed = state.focusModel !== "all" && state.focusModel !== model.model_name;
+  const totalRuntime = model.benchmark_total_runtime_s ?? 0;
+  const loadRuntime = model.load_time_s ?? 0;
+  const inferenceRuntime = model.benchmark_inference_runtime_s ?? 0;
+  const barWidth = maxTotal > 0 ? (totalRuntime / maxTotal) * 100 : 0;
+  const loadShare = totalRuntime > 0 ? (loadRuntime / totalRuntime) * 100 : 0;
+  const inferenceShare = totalRuntime > 0 ? (inferenceRuntime / totalRuntime) * 100 : 0;
+  const tooltip = `
+    <strong>${escapeHtml(model.model_name)}</strong><br />
+    Runtime cost proxy: ${formatSeconds(totalRuntime)}<br />
+    Load time: ${formatSeconds(loadRuntime)}<br />
+    Inference time: ${formatSeconds(inferenceRuntime)}<br />
+    Relative cost: ${model.runtime_cost_multiple.toFixed(2)}x cheapest
+  `;
+
+  return `
+    <article
+      class="cost-row clickable ${focused ? "focused" : ""} ${dimmed ? "dimmed" : ""}"
+      data-focus-model="${escapeHtml(model.model_name)}"
+      data-tooltip="${escapeAttribute(tooltip)}"
+    >
+      <div class="cost-row-head">
+        <div class="cost-row-title">
+          <div class="leaderboard-tags">
+            <span class="rank-badge">#${model.rank}</span>
+            <span class="trait-badge">${escapeHtml(compactName(model.model_name))}</span>
+          </div>
+          <h3>${escapeHtml(model.model_name)}</h3>
+        </div>
+        <div class="cost-total">
+          <strong>${escapeHtml(formatSeconds(totalRuntime))}</strong>
+          <span class="muted">${escapeHtml(`${model.runtime_cost_multiple.toFixed(2)}x cheapest`)}</span>
+        </div>
+      </div>
+      <div class="cost-track">
+        <div class="cost-stack" style="width:${barWidth}%">
+          <span class="cost-segment load" style="width:${loadShare}%"></span>
+          <span class="cost-segment inference" style="width:${inferenceShare}%"></span>
+        </div>
+      </div>
+      <div class="cost-meta">
+        <span class="mini-pill">Load ${escapeHtml(formatSeconds(loadRuntime))}</span>
+        <span class="mini-pill">Inference ${escapeHtml(formatSeconds(inferenceRuntime))}</span>
+        <span class="mini-pill">Speed ${escapeHtml(formatSpeed(model.avg_speed_tests_per_sec))}</span>
+      </div>
+    </article>
   `;
 }
 
@@ -899,7 +1027,7 @@ function sortModels(models, metric) {
     if (metric === "ranking") {
       return a.rank - b.rank;
     }
-    if (metric === "avg_latency_ms" || metric === "riskScore") {
+    if (metric === "avg_latency_ms" || metric === "benchmark_total_runtime_s" || metric === "riskScore") {
       return (a[metric] ?? 0) - (b[metric] ?? 0);
     }
     return (b[metric] ?? 0) - (a[metric] ?? 0);
@@ -1016,6 +1144,19 @@ function getRange(values) {
   return [Math.min(...values), Math.max(...values)];
 }
 
+function expandRange(range, paddingRatio = 0.1) {
+  const [min, max] = range;
+  if (!Number.isFinite(min) || !Number.isFinite(max)) {
+    return [0, 1];
+  }
+  if (min === max) {
+    const delta = Math.max(Math.abs(min) * paddingRatio, 1);
+    return [min - delta, max + delta];
+  }
+  const delta = (max - min) * paddingRatio;
+  return [min - delta, max + delta];
+}
+
 function buildAxisTicks(range, count = 5) {
   const [min, max] = range;
   if (!Number.isFinite(min) || !Number.isFinite(max)) {
@@ -1082,11 +1223,21 @@ function formatSpeed(value) {
   return `${Number(value).toFixed(2)} tests/sec`;
 }
 
+function formatSeconds(value) {
+  if (value == null || Number.isNaN(value)) {
+    return "--";
+  }
+  return `${Number(value).toFixed(value >= 10 ? 1 : 2)} s`;
+}
+
 function formatAxisValue(value, kind) {
   if (value == null || Number.isNaN(value)) {
     return "--";
   }
   if (kind === "speed") {
+    return Number(value).toFixed(value >= 10 ? 0 : 1);
+  }
+  if (kind === "seconds") {
     return Number(value).toFixed(value >= 10 ? 0 : 1);
   }
   return Number(value).toFixed(0);

@@ -341,6 +341,7 @@ body {
 
 .panel > #leaderboard,
 .panel > #scatterChart,
+.panel > #costChart,
 .panel > #heatmap,
 .panel > #testExplorer,
 .panel > #failurePanel {
@@ -506,6 +507,103 @@ body {
 .scatter-point text {
   font-size: 12px;
   fill: var(--text);
+}
+
+.cost-axis {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 0;
+  margin: 8px 0 12px;
+  color: #7b879a;
+  font-size: 0.78rem;
+}
+
+.cost-axis span {
+  text-align: center;
+}
+
+.cost-grid {
+  display: grid;
+  gap: 12px;
+}
+
+.cost-row {
+  padding: 16px 18px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface-soft);
+  box-shadow: var(--shadow-soft);
+  transition:
+    border-color 160ms ease,
+    box-shadow 160ms ease,
+    opacity 160ms ease;
+}
+
+.cost-row.dimmed {
+  opacity: 0.5;
+}
+
+.cost-row.focused {
+  border-color: rgba(45, 99, 214, 0.4);
+  box-shadow: 0 14px 28px rgba(45, 99, 214, 0.1);
+}
+
+.cost-row-head {
+  display: grid;
+  grid-template-columns: minmax(220px, 280px) 120px;
+  gap: 14px;
+  align-items: center;
+}
+
+.cost-row-title h3 {
+  margin: 10px 0 0;
+  font-size: 1.02rem;
+}
+
+.cost-total {
+  text-align: right;
+}
+
+.cost-total strong {
+  display: block;
+  font-size: 1.15rem;
+}
+
+.cost-track {
+  margin-top: 14px;
+  height: 18px;
+  border-radius: 999px;
+  background: var(--track);
+  overflow: hidden;
+}
+
+.cost-stack {
+  height: 100%;
+  min-width: 12px;
+  display: flex;
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.cost-segment {
+  height: 100%;
+}
+
+.cost-segment.load,
+.cost-load-swatch {
+  background: linear-gradient(135deg, #10233d, #27476f);
+}
+
+.cost-segment.inference,
+.cost-inference-swatch {
+  background: linear-gradient(135deg, #2d63d6, #6d91ea);
+}
+
+.cost-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 10px;
+  margin-top: 12px;
 }
 
 .heatmap-grid {
@@ -691,6 +789,7 @@ body {
   .toolbar,
   .panel > #leaderboard,
   .panel > #scatterChart,
+  .panel > #costChart,
   .panel > #heatmap,
   .panel > #testExplorer,
   .panel > #failurePanel,
@@ -715,5 +814,13 @@ body {
   .heatmap-row {
     grid-template-columns: 130px repeat(var(--cols), minmax(120px, 1fr));
     overflow-x: auto;
+  }
+
+  .cost-row-head {
+    grid-template-columns: 1fr;
+  }
+
+  .cost-total {
+    text-align: left;
   }
 }

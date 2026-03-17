@@ -153,9 +153,8 @@ The dashboard shows:
 - winner and KPI overview
 - sortable leaderboard
 - speed vs accuracy scatter
-- radar fingerprint
+- runtime cost proxy
 - category heatmap
-- model cards
 - sentence explorer
 - failure analysis
 
