@@ -1,16 +1,17 @@
-# Arabic Encoder Benchmark
+# Multilingual Encoder Benchmark
 
-A small benchmark project for comparing Arabic encoder models on zero-shot intent classification, plus a standalone dashboard for visualizing the results.
+A benchmark project for comparing encoder models on zero-shot intent classification across Arabic, English, French, and Spanish, plus a standalone dashboard for visualizing the results.
 
 ## What Changed
 
 This repo now uses:
 
-- an external benchmark dataset in [data/arabic_intent_benchmark.json](./data/arabic_intent_benchmark.json)
+- an external multilingual benchmark dataset in [data/multilingual_intent_benchmark.json](./data/multilingual_intent_benchmark.json)
 - a fixed global intent label space for fairer evaluation
-- more Arabic test examples across sports, politics, business, greeting, shipping, returns, product recommendation, and appointment intents
+- matched multilingual test examples across Arabic, English, French, and Spanish
 - macro intent accuracy and macro category accuracy in addition to overall accuracy
-- a standalone dashboard for exploring speed, confidence, margins, and failure cases
+- per-language accuracy so Arabic vs English performance is visible per model
+- a standalone dashboard for exploring language comparison, speed, confidence, margins, and failure cases
 
 ## Project Structure
 
@@ -69,7 +70,7 @@ python compare_arabic_encoders.py --score-threshold 0.62 --margin-threshold 0.05
 Use a different dataset file:
 
 ```bash
-python compare_arabic_encoders.py --dataset data/arabic_intent_benchmark.json
+python compare_arabic_encoders.py --dataset data/multilingual_intent_benchmark.json
 ```
 
 ## Why The Benchmark Is Fairer Now
@@ -92,6 +93,7 @@ The script now reports:
 - overall accuracy
 - macro intent accuracy
 - macro category accuracy
+- macro language accuracy
 - confident accuracy
 - coverage above threshold
 - average score
@@ -100,7 +102,7 @@ The script now reports:
 
 ## Dataset Format
 
-The benchmark dataset lives in [data/arabic_intent_benchmark.json](./data/arabic_intent_benchmark.json).
+The benchmark dataset lives in [data/multilingual_intent_benchmark.json](./data/multilingual_intent_benchmark.json).
 
 High-level format:
 
@@ -152,6 +154,7 @@ The dashboard shows:
 
 - winner and KPI overview
 - sortable leaderboard
+- language comparison bars
 - speed vs accuracy scatter
 - runtime cost proxy
 - category heatmap

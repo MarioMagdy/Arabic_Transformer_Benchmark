@@ -1,25 +1,25 @@
 :root {
-  --bg: #f5f7fb;
+  --bg: #edf2fa;
   --surface: #ffffff;
-  --surface-soft: #f8fafc;
-  --surface-strong: #eef3fb;
-  --hero: #10233d;
-  --hero-soft: #173357;
-  --text: #14243a;
-  --text-soft: #617086;
+  --surface-soft: #f4f8fe;
+  --surface-strong: #e6eefb;
+  --hero: #0f2340;
+  --hero-soft: #1a3d68;
+  --text: #0f1d33;
+  --text-soft: #50627b;
   --text-on-dark: #f8fbff;
-  --border: #dbe4f0;
-  --shadow: 0 18px 40px rgba(17, 35, 58, 0.08);
-  --shadow-soft: 0 10px 24px rgba(17, 35, 58, 0.05);
+  --border: #c8d7ea;
+  --shadow: 0 18px 40px rgba(17, 35, 58, 0.1);
+  --shadow-soft: 0 10px 24px rgba(17, 35, 58, 0.07);
   --radius-xl: 28px;
   --radius-lg: 22px;
   --radius-md: 16px;
-  --cobalt: #2d63d6;
-  --emerald: #1c9c7d;
-  --amber: #df9a27;
-  --terracotta: #c85a43;
-  --navy: #10233d;
-  --track: #e5ecf6;
+  --cobalt: #1a5fff;
+  --emerald: #02967d;
+  --amber: #de8a00;
+  --terracotta: #cf4f36;
+  --navy: #0f2340;
+  --track: #dce6f5;
 }
 
 * {
@@ -36,7 +36,7 @@ body {
   color: var(--text);
   font-family: "Space Grotesk", "Segoe UI", sans-serif;
   background:
-    linear-gradient(180deg, #f9fbfe 0%, #f3f6fb 100%);
+    linear-gradient(180deg, #f8fbff 0%, #eaf0f9 100%);
 }
 
 .app-shell {
@@ -340,6 +340,7 @@ body {
 }
 
 .panel > #leaderboard,
+.panel > #languageChart,
 .panel > #scatterChart,
 .panel > #costChart,
 .panel > #heatmap,
@@ -488,25 +489,41 @@ body {
 }
 
 .legend-swatch {
-  width: 10px;
-  height: 10px;
+  width: 12px;
+  height: 12px;
   border-radius: 999px;
 }
 
 .scatter-axis-label,
 .quadrant-label {
   font-size: 12px;
-  fill: #657188;
+  fill: #4f617b;
 }
 
 .scatter-tick-label {
   font-size: 11px;
-  fill: #7b879a;
+  fill: #61738d;
 }
 
 .scatter-point text {
-  font-size: 12px;
+  font-size: 13px;
+  font-weight: 600;
   fill: var(--text);
+}
+
+.language-axis-label,
+.language-x-label {
+  font-size: 12px;
+  fill: #4f617b;
+}
+
+.language-tick-label {
+  font-size: 11px;
+  fill: #61738d;
+}
+
+.language-x-label {
+  font-weight: 600;
 }
 
 .cost-axis {
@@ -788,6 +805,7 @@ body {
   .hero-spotlight,
   .toolbar,
   .panel > #leaderboard,
+  .panel > #languageChart,
   .panel > #scatterChart,
   .panel > #costChart,
   .panel > #heatmap,

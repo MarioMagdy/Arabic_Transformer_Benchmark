@@ -1,0 +1,132 @@
+{
+  "metadata": {
+    "name": "Multilingual Intent Benchmark",
+    "version": "2.0.0",
+    "description": "A fixed-label multilingual zero-shot intent benchmark for comparing encoder models across Arabic, English, French, and Spanish.",
+    "default_label_set": "ar",
+    "languages": ["ar", "en", "fr", "es"]
+  },
+  "label_sets": {
+    "ar": [
+      { "key": "sports", "label": "أخبار أو أحداث رياضية مثل المباريات والأهداف والبطولات واللاعبين والمدربين" },
+      { "key": "politics", "label": "سياسة وحكومة وتشريعات وانتخابات وبرلمان وقرارات رسمية واتفاقيات دولية" },
+      { "key": "business", "label": "أعمال ومال وشركات وأسهم واستثمار وبنوك ومبيعات ونمو تجاري" },
+      { "key": "greeting", "label": "تحية وبداية محادثة وطلب مساعدة عام مثل مرحبا وأهلا وصباح الخير" },
+      { "key": "shipping", "label": "استفسار عن الشحن والتوصيل ومدة الوصول ورسوم الشحن ومناطق الخدمة" },
+      { "key": "returns", "label": "إرجاع أو استبدال أو استرداد مبلغ أو مشكلة في منتج يحتاج إرجاعا" },
+      { "key": "product_recommendation", "label": "طلب توصية أو نصيحة لاختيار منتج مناسب حسب الاحتياج أو الحالة" },
+      { "key": "appointment", "label": "حجز أو تأكيد أو تعديل أو إلغاء موعد أو طلب إعادة جدولة" }
+    ],
+    "en": [
+      { "key": "sports", "label": "Sports news and events such as matches, goals, tournaments, players, and coaches" },
+      { "key": "politics", "label": "Politics, government, legislation, elections, parliament, official decisions, and international agreements" },
+      { "key": "business", "label": "Business, finance, companies, stocks, investment, banking, sales, and commercial growth" },
+      { "key": "greeting", "label": "Greetings, conversation openings, and general help requests such as hello, hi, and good morning" },
+      { "key": "shipping", "label": "Questions about shipping, delivery, arrival time, shipping fees, and service areas" },
+      { "key": "returns", "label": "Requests for returns, exchanges, refunds, or problems with a product that needs to be sent back" },
+      { "key": "product_recommendation", "label": "Requests for product recommendations or advice about choosing a suitable product" },
+      { "key": "appointment", "label": "Booking, confirming, rescheduling, or canceling an appointment" }
+    ],
+    "fr": [
+      { "key": "sports", "label": "Actualités et événements sportifs comme les matchs, les buts, les tournois, les joueurs et les entraîneurs" },
+      { "key": "politics", "label": "Politique, gouvernement, législation, élections, parlement, décisions officielles et accords internationaux" },
+      { "key": "business", "label": "Affaires, finance, entreprises, actions, investissement, banques, ventes et croissance commerciale" },
+      { "key": "greeting", "label": "Salutations, débuts de conversation et demandes d'aide générale comme bonjour et salut" },
+      { "key": "shipping", "label": "Questions sur l'expédition, la livraison, les délais, les frais d'envoi et les zones de service" },
+      { "key": "returns", "label": "Demandes de retour, d'échange, de remboursement ou problème avec un produit à renvoyer" },
+      { "key": "product_recommendation", "label": "Demandes de recommandation de produit ou de conseil pour choisir un produit adapté" },
+      { "key": "appointment", "label": "Réservation, confirmation, report ou annulation d'un rendez-vous" }
+    ],
+    "es": [
+      { "key": "sports", "label": "Noticias y eventos deportivos como partidos, goles, torneos, jugadores y entrenadores" },
+      { "key": "politics", "label": "Política, gobierno, legislación, elecciones, parlamento, decisiones oficiales y acuerdos internacionales" },
+      { "key": "business", "label": "Negocios, finanzas, empresas, acciones, inversión, banca, ventas y crecimiento comercial" },
+      { "key": "greeting", "label": "Saludos, inicios de conversación y solicitudes generales de ayuda como hola y buenos días" },
+      { "key": "shipping", "label": "Preguntas sobre envío, entrega, tiempo de llegada, tarifas de envío y zonas de servicio" },
+      { "key": "returns", "label": "Solicitudes de devolución, cambio, reembolso o problemas con un producto que debe devolverse" },
+      { "key": "product_recommendation", "label": "Solicitudes de recomendación de productos o consejos para elegir un producto adecuado" },
+      { "key": "appointment", "label": "Reserva, confirmación, cambio o cancelación de una cita" }
+    ]
+  },
+  "tests": [
+    { "id": "ar_sports_1", "language": "ar", "text": "هذه مباراة تنس طاولة رائعة جدا", "expected": "sports", "category": "sports", "label_set": "ar" },
+    { "id": "en_sports_1", "language": "en", "text": "This is a really great table tennis match", "expected": "sports", "category": "sports", "label_set": "en" },
+    { "id": "fr_sports_1", "language": "fr", "text": "C'est un très beau match de tennis de table", "expected": "sports", "category": "sports", "label_set": "fr" },
+    { "id": "es_sports_1", "language": "es", "text": "Este es un partido de tenis de mesa realmente excelente", "expected": "sports", "category": "sports", "label_set": "es" },
+
+    { "id": "ar_sports_2", "language": "ar", "text": "سجل اللاعب هدفا رائعا في الدقيقة التسعين من مباراة كرة القدم", "expected": "sports", "category": "sports", "label_set": "ar" },
+    { "id": "en_sports_2", "language": "en", "text": "The player scored a brilliant goal in the ninetieth minute of the football match", "expected": "sports", "category": "sports", "label_set": "en" },
+    { "id": "fr_sports_2", "language": "fr", "text": "Le joueur a marqué un superbe but à la quatre-vingt-dixième minute du match de football", "expected": "sports", "category": "sports", "label_set": "fr" },
+    { "id": "es_sports_2", "language": "es", "text": "El jugador marcó un gol brillante en el minuto noventa del partido de fútbol", "expected": "sports", "category": "sports", "label_set": "es" },
+
+    { "id": "ar_politics_1", "language": "ar", "text": "أعلن الرئيس عن خطة إصلاحية جديدة تشمل تغييرات في قانون الانتخابات", "expected": "politics", "category": "politics", "label_set": "ar" },
+    { "id": "en_politics_1", "language": "en", "text": "The president announced a new reform plan that includes changes to the election law", "expected": "politics", "category": "politics", "label_set": "en" },
+    { "id": "fr_politics_1", "language": "fr", "text": "Le président a annoncé un nouveau plan de réforme comprenant des changements dans la loi électorale", "expected": "politics", "category": "politics", "label_set": "fr" },
+    { "id": "es_politics_1", "language": "es", "text": "El presidente anunció un nuevo plan de reforma que incluye cambios en la ley electoral", "expected": "politics", "category": "politics", "label_set": "es" },
+
+    { "id": "ar_politics_2", "language": "ar", "text": "صوت البرلمان على مشروع قانون لزيادة الضرائب على الشركات الكبرى", "expected": "politics", "category": "politics", "label_set": "ar" },
+    { "id": "en_politics_2", "language": "en", "text": "Parliament voted on a bill to increase taxes on large companies", "expected": "politics", "category": "politics", "label_set": "en" },
+    { "id": "fr_politics_2", "language": "fr", "text": "Le parlement a voté sur un projet de loi visant à augmenter les impôts des grandes entreprises", "expected": "politics", "category": "politics", "label_set": "fr" },
+    { "id": "es_politics_2", "language": "es", "text": "El parlamento votó un proyecto de ley para aumentar los impuestos a las grandes empresas", "expected": "politics", "category": "politics", "label_set": "es" },
+
+    { "id": "ar_business_1", "language": "ar", "text": "أعلنت الشركة عن أرباح قياسية هذا الربع بفضل نمو التجارة الإلكترونية", "expected": "business", "category": "business", "label_set": "ar" },
+    { "id": "en_business_1", "language": "en", "text": "The company announced record profits this quarter thanks to e-commerce growth", "expected": "business", "category": "business", "label_set": "en" },
+    { "id": "fr_business_1", "language": "fr", "text": "L'entreprise a annoncé des bénéfices records ce trimestre grâce à la croissance du commerce en ligne", "expected": "business", "category": "business", "label_set": "fr" },
+    { "id": "es_business_1", "language": "es", "text": "La empresa anunció ganancias récord este trimestre gracias al crecimiento del comercio electrónico", "expected": "business", "category": "business", "label_set": "es" },
+
+    { "id": "ar_business_2", "language": "ar", "text": "ارتفع سعر سهم الشركة اليوم في تداولات البورصة", "expected": "business", "category": "business", "label_set": "ar" },
+    { "id": "en_business_2", "language": "en", "text": "The company's stock price rose today in market trading", "expected": "business", "category": "business", "label_set": "en" },
+    { "id": "fr_business_2", "language": "fr", "text": "Le cours de l'action de l'entreprise a augmenté aujourd'hui en bourse", "expected": "business", "category": "business", "label_set": "fr" },
+    { "id": "es_business_2", "language": "es", "text": "El precio de la acción de la empresa subió hoy en la bolsa", "expected": "business", "category": "business", "label_set": "es" },
+
+    { "id": "ar_greeting_1", "language": "ar", "text": "مرحبا كيف حالك", "expected": "greeting", "category": "greeting", "label_set": "ar" },
+    { "id": "en_greeting_1", "language": "en", "text": "Hello, how are you", "expected": "greeting", "category": "greeting", "label_set": "en" },
+    { "id": "fr_greeting_1", "language": "fr", "text": "Bonjour, comment allez-vous", "expected": "greeting", "category": "greeting", "label_set": "fr" },
+    { "id": "es_greeting_1", "language": "es", "text": "Hola, ¿cómo estás?", "expected": "greeting", "category": "greeting", "label_set": "es" },
+
+    { "id": "ar_greeting_2", "language": "ar", "text": "أهلا أنا بحاجة إلى المساعدة", "expected": "greeting", "category": "greeting", "label_set": "ar" },
+    { "id": "en_greeting_2", "language": "en", "text": "Hi, I need some help", "expected": "greeting", "category": "greeting", "label_set": "en" },
+    { "id": "fr_greeting_2", "language": "fr", "text": "Salut, j'ai besoin d'aide", "expected": "greeting", "category": "greeting", "label_set": "fr" },
+    { "id": "es_greeting_2", "language": "es", "text": "Hola, necesito ayuda", "expected": "greeting", "category": "greeting", "label_set": "es" },
+
+    { "id": "ar_shipping_1", "language": "ar", "text": "كم مدة الشحن إلى القاهرة", "expected": "shipping", "category": "faq", "label_set": "ar" },
+    { "id": "en_shipping_1", "language": "en", "text": "How long does shipping to Cairo take", "expected": "shipping", "category": "faq", "label_set": "en" },
+    { "id": "fr_shipping_1", "language": "fr", "text": "Combien de temps prend la livraison vers Le Caire", "expected": "shipping", "category": "faq", "label_set": "fr" },
+    { "id": "es_shipping_1", "language": "es", "text": "Cuánto tarda el envío a El Cairo", "expected": "shipping", "category": "faq", "label_set": "es" },
+
+    { "id": "ar_shipping_2", "language": "ar", "text": "هل التوصيل متاح إلى الإسكندرية خلال يومين", "expected": "shipping", "category": "faq", "label_set": "ar" },
+    { "id": "en_shipping_2", "language": "en", "text": "Is delivery to Alexandria available within two days", "expected": "shipping", "category": "faq", "label_set": "en" },
+    { "id": "fr_shipping_2", "language": "fr", "text": "La livraison à Alexandrie est-elle disponible sous deux jours", "expected": "shipping", "category": "faq", "label_set": "fr" },
+    { "id": "es_shipping_2", "language": "es", "text": "¿Está disponible la entrega a Alejandría en dos días?", "expected": "shipping", "category": "faq", "label_set": "es" },
+
+    { "id": "ar_returns_1", "language": "ar", "text": "هل يمكنني إرجاع المنتج إذا كان به عيب", "expected": "returns", "category": "faq", "label_set": "ar" },
+    { "id": "en_returns_1", "language": "en", "text": "Can I return the product if it has a defect", "expected": "returns", "category": "faq", "label_set": "en" },
+    { "id": "fr_returns_1", "language": "fr", "text": "Puis-je retourner le produit s'il présente un défaut", "expected": "returns", "category": "faq", "label_set": "fr" },
+    { "id": "es_returns_1", "language": "es", "text": "¿Puedo devolver el producto si tiene un defecto?", "expected": "returns", "category": "faq", "label_set": "es" },
+
+    { "id": "ar_returns_2", "language": "ar", "text": "أريد استبدال المقاس ما هي خطوات الإرجاع", "expected": "returns", "category": "faq", "label_set": "ar" },
+    { "id": "en_returns_2", "language": "en", "text": "I want to exchange the size, what are the return steps", "expected": "returns", "category": "faq", "label_set": "en" },
+    { "id": "fr_returns_2", "language": "fr", "text": "Je veux échanger la taille, quelles sont les étapes du retour", "expected": "returns", "category": "faq", "label_set": "fr" },
+    { "id": "es_returns_2", "language": "es", "text": "Quiero cambiar la talla, cuáles son los pasos para la devolución", "expected": "returns", "category": "faq", "label_set": "es" },
+
+    { "id": "ar_product_1", "language": "ar", "text": "بشرتي دهنية ومعي حبوب أي كريم تنصحني", "expected": "product_recommendation", "category": "hard", "label_set": "ar" },
+    { "id": "en_product_1", "language": "en", "text": "My skin is oily and I have acne, which cream do you recommend", "expected": "product_recommendation", "category": "hard", "label_set": "en" },
+    { "id": "fr_product_1", "language": "fr", "text": "Ma peau est grasse et j'ai de l'acné, quelle crème recommandez-vous", "expected": "product_recommendation", "category": "hard", "label_set": "fr" },
+    { "id": "es_product_1", "language": "es", "text": "Mi piel es grasa y tengo acné, qué crema me recomiendas", "expected": "product_recommendation", "category": "hard", "label_set": "es" },
+
+    { "id": "ar_product_2", "language": "ar", "text": "أريد مرطبا خفيفا للبشرة الحساسة", "expected": "product_recommendation", "category": "hard", "label_set": "ar" },
+    { "id": "en_product_2", "language": "en", "text": "I want a light moisturizer for sensitive skin", "expected": "product_recommendation", "category": "hard", "label_set": "en" },
+    { "id": "fr_product_2", "language": "fr", "text": "Je veux un hydratant léger pour la peau sensible", "expected": "product_recommendation", "category": "hard", "label_set": "fr" },
+    { "id": "es_product_2", "language": "es", "text": "Quiero una crema hidratante ligera para piel sensible", "expected": "product_recommendation", "category": "hard", "label_set": "es" },
+
+    { "id": "ar_appointment_1", "language": "ar", "text": "لدي موعد الأسبوع القادم وأحتاج إلى تأكيد", "expected": "appointment", "category": "hard", "label_set": "ar" },
+    { "id": "en_appointment_1", "language": "en", "text": "I have an appointment next week and I need confirmation", "expected": "appointment", "category": "hard", "label_set": "en" },
+    { "id": "fr_appointment_1", "language": "fr", "text": "J'ai un rendez-vous la semaine prochaine et j'ai besoin d'une confirmation", "expected": "appointment", "category": "hard", "label_set": "fr" },
+    { "id": "es_appointment_1", "language": "es", "text": "Tengo una cita la próxima semana y necesito confirmación", "expected": "appointment", "category": "hard", "label_set": "es" },
+
+    { "id": "ar_appointment_2", "language": "ar", "text": "أريد إعادة جدولة موعد العيادة إلى يوم الثلاثاء", "expected": "appointment", "category": "hard", "label_set": "ar" },
+    { "id": "en_appointment_2", "language": "en", "text": "I want to reschedule my clinic appointment to Tuesday", "expected": "appointment", "category": "hard", "label_set": "en" },
+    { "id": "fr_appointment_2", "language": "fr", "text": "Je veux reporter mon rendez-vous à la clinique à mardi", "expected": "appointment", "category": "hard", "label_set": "fr" },
+    { "id": "es_appointment_2", "language": "es", "text": "Quiero reprogramar mi cita en la clínica para el martes", "expected": "appointment", "category": "hard", "label_set": "es" }
+  ]
+}

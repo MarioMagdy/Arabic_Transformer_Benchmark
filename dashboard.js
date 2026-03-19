@@ -1,4 +1,17 @@
-const MODEL_COLORS = ["#2d63d6", "#1c9c7d", "#df9a27", "#c85a43", "#6f5ce8"];
+const MODEL_COLORS = ["#1a5fff", "#02967d", "#de8a00", "#cf4f36", "#5f4be8"];
+const LANGUAGE_ORDER = ["ar", "en", "fr", "es"];
+const LANGUAGE_LABELS = {
+  ar: "Arabic",
+  en: "English",
+  fr: "French",
+  es: "Spanish",
+};
+const LANGUAGE_COLORS = {
+  ar: "#d84b4b",
+  en: "#1a5fff",
+  fr: "#11a579",
+  es: "#7a56f3",
+};
 
 const SORT_OPTIONS = [
   { value: "ranking", label: "Benchmark Rank" },
@@ -33,6 +46,7 @@ const elements = {
   kpiSection: document.getElementById("kpiSection"),
   findingsPanel: document.getElementById("findingsPanel"),
   leaderboard: document.getElementById("leaderboard"),
+  languageChart: document.getElementById("languageChart"),
   scatterChart: document.getElementById("scatterChart"),
   costChart: document.getElementById("costChart"),
   heatmap: document.getElementById("heatmap"),
@@ -165,6 +179,7 @@ function renderAll() {
   renderKpis();
   renderFindings();
   renderLeaderboard();
+  renderLanguageComparisonChart();
   renderScatterPlot();
   renderCostChart();
   renderHeatmap();
@@ -193,6 +208,7 @@ function renderNoData(message) {
     elements.kpiSection,
     elements.findingsPanel,
     elements.leaderboard,
+    elements.languageChart,
     elements.scatterChart,
     elements.costChart,
     elements.heatmap,
@@ -207,18 +223,24 @@ function renderNoData(message) {
 function prepareBenchmarkData(raw) {
   const metadata = raw.metadata ?? {};
   const thresholds = metadata.thresholds ?? { score: 0.6, margin: 0.04 };
+  const rawTests = raw.tests ?? [];
+  const testLookup = new Map(rawTests.map((test) => [test.id, test]));
   const rankingLookup = new Map((raw.ranking ?? []).map((entry) => [entry.model_name, entry.rank]));
-  const categories = [...new Set((raw.tests ?? []).map((test) => test.category))];
-  const benchmarkTestCount = Number(metadata.num_tests ?? (raw.tests ?? []).length ?? 0);
+  const categories = [...new Set(rawTests.map((test) => test.category))];
+  const languages = getOrderedLanguages(rawTests.map((test) => test.language).filter(Boolean));
+  const benchmarkTestCount = Number(metadata.num_tests ?? rawTests.length ?? 0);
 
   const models = (raw.models ?? []).map((model, index) => {
     const summary = model.summary ?? {};
     const results = (model.results ?? []).map((result) => ({
       ...result,
+      language: result.language ?? testLookup.get(result.test_id)?.language ?? "unknown",
       model_name: summary.model_name,
       statusClass: getStatusClass(result),
     }));
     const categoryAccuracy = summary.per_category_accuracy_pct ?? {};
+    const languageAccuracy =
+      summary.per_language_accuracy_pct ?? computeAccuracyByField(results, "language", languages);
     const categoryEntries = Object.entries(categoryAccuracy).filter(([, value]) => value != null);
     const wrongCount = results.filter((result) => !result.correct).length;
     const highConfidenceWrongCount = results.filter((result) => !result.correct && result.confident).length;
@@ -233,6 +255,7 @@ function prepareBenchmarkData(raw) {
       color: MODEL_COLORS[index % MODEL_COLORS.length],
       initials: getInitials(summary.model_name ?? `M${index + 1}`),
       categoryAccuracy,
+      languageAccuracy,
       bestCategory,
       weakestCategory,
       hardAccuracy: categoryAccuracy.hard ?? 0,
@@ -353,6 +376,7 @@ function prepareBenchmarkData(raw) {
     models: enrichedModels,
     tests,
     categories,
+    languages,
     winners,
     categoryAverages,
   };
@@ -540,6 +564,107 @@ function renderLeaderboardRow(model) {
   `;
 }
 
+function renderLanguageComparisonChart() {
+  const models = state.prepared.models;
+  const languages = getOrderedLanguages(state.prepared.languages);
+
+  if (!models.length || !languages.length) {
+    elements.languageChart.innerHTML = renderEmpty("No language comparison data available.");
+    return;
+  }
+
+  const shownLanguages = languages.slice(0, 4);
+  const width = 940;
+  const height = 430;
+  const padding = { top: 28, right: 24, bottom: 82, left: 58 };
+  const innerWidth = width - padding.left - padding.right;
+  const innerHeight = height - padding.top - padding.bottom;
+  const yTicks = [0, 25, 50, 75, 100];
+  const groupWidth = innerWidth / Math.max(models.length, 1);
+  const barGap = 8;
+  const barWidth = Math.min(26, (groupWidth - 28 - (shownLanguages.length - 1) * barGap) / shownLanguages.length);
+  const bestBilingual =
+    [...models].sort((left, right) => bilingualAverage(right) - bilingualAverage(left))[0] ?? null;
+
+  const grid = yTicks
+    .map((tick) => {
+      const y = padding.top + innerHeight - (tick / 100) * innerHeight;
+      return `
+        <line x1="${padding.left}" y1="${y}" x2="${width - padding.right}" y2="${y}" stroke="rgba(97, 112, 134, 0.16)" />
+        <text class="language-tick-label" x="${padding.left - 10}" y="${y + 4}" text-anchor="end">${tick}</text>
+      `;
+    })
+    .join("");
+
+  const bars = models
+    .map((model, modelIndex) => {
+      const totalBarWidth = shownLanguages.length * barWidth + (shownLanguages.length - 1) * barGap;
+      const groupX = padding.left + modelIndex * groupWidth + (groupWidth - totalBarWidth) / 2;
+      const labelX = padding.left + modelIndex * groupWidth + groupWidth / 2;
+      const dimmed = state.focusModel !== "all" && state.focusModel !== model.model_name;
+      const opacity = dimmed ? 0.35 : 0.95;
+
+      const modelBars = shownLanguages
+        .map((language, languageIndex) => {
+          const value = model.languageAccuracy?.[language] ?? 0;
+          const barHeight = (value / 100) * innerHeight;
+          const x = groupX + languageIndex * (barWidth + barGap);
+          const y = padding.top + innerHeight - barHeight;
+          const tooltip = `
+            <strong>${escapeHtml(model.model_name)}</strong><br />
+            Language: ${escapeHtml(getLanguageLabel(language))}<br />
+            Accuracy: ${formatPct(value)}
+          `;
+
+          return `
+            <rect
+              class="language-bar clickable"
+              x="${x}"
+              y="${y}"
+              width="${barWidth}"
+              height="${Math.max(barHeight, 4)}"
+              rx="8"
+              fill="${LANGUAGE_COLORS[language] ?? model.color}"
+              fill-opacity="${opacity}"
+              data-focus-model="${escapeHtml(model.model_name)}"
+              data-tooltip="${escapeAttribute(tooltip)}"
+            ></rect>
+          `;
+        })
+        .join("");
+
+      return `
+        <g>
+          ${modelBars}
+          <text class="language-x-label" x="${labelX}" y="${height - 28}" text-anchor="middle">${escapeHtml(
+            compactName(model.model_name)
+          )}</text>
+        </g>
+      `;
+    })
+    .join("");
+
+  elements.languageChart.innerHTML = `
+    <div class="leaderboard-toolbar">
+      <div>
+        <p class="section-kicker">Cross-Lingual View</p>
+        <h3 class="card-title">${escapeHtml(
+          bestBilingual?.model_name ?? "N/A"
+        )} is strongest across Arabic and English</h3>
+      </div>
+      <p class="metric-note">Arabic is red, English is blue, with French and Spanish beside them.</p>
+    </div>
+    <svg class="chart-svg" viewBox="0 0 ${width} ${height}" role="img" aria-label="Per-model accuracy comparison across benchmark languages">
+      ${grid}
+      <line x1="${padding.left}" y1="${padding.top}" x2="${padding.left}" y2="${height - padding.bottom}" stroke="rgba(20, 36, 58, 0.28)" />
+      <line x1="${padding.left}" y1="${height - padding.bottom}" x2="${width - padding.right}" y2="${height - padding.bottom}" stroke="rgba(20, 36, 58, 0.28)" />
+      <text class="language-axis-label" x="18" y="${height / 2}" text-anchor="middle" transform="rotate(-90 18 ${height / 2})">Accuracy (%)</text>
+      ${bars}
+    </svg>
+    ${renderLanguageLegend(shownLanguages)}
+  `;
+}
+
 function renderScatterPlot() {
   const models = state.prepared.models;
   if (!models.length) {
@@ -552,7 +677,7 @@ function renderScatterPlot() {
   const padding = { top: 36, right: 52, bottom: 54, left: 62 };
   const xRange = expandRange(getRange(models.map((model) => model.avg_speed_tests_per_sec ?? 0)), 0.1);
   const yRange = expandRange(getRange(models.map((model) => model.macro_intent_accuracy_pct ?? 0)), 0.1);
-  const maxRadius = Math.max(...models.map((model) => 10 + ((model.coverage_above_threshold_pct ?? 0) / 100) * 20));
+  const maxRadius = Math.max(...models.map((model) => getScatterRadius(model)));
   const pointInset = maxRadius + 8;
   const plotLeft = padding.left + pointInset;
   const plotRight = width - padding.right - pointInset;
@@ -595,7 +720,7 @@ function renderScatterPlot() {
     .map((model) => {
       const x = plotLeft + normalize(model.avg_speed_tests_per_sec ?? 0, xRange) * plotWidth;
       const y = plotTop + (1 - normalize(model.macro_intent_accuracy_pct ?? 0, yRange)) * plotHeight;
-      const radius = 10 + ((model.coverage_above_threshold_pct ?? 0) / 100) * 20;
+      const radius = getScatterRadius(model);
       const dimmed = state.focusModel !== "all" && state.focusModel !== model.model_name;
       const opacity = dimmed ? 0.35 : 0.88;
       const tooltip = `
@@ -610,7 +735,7 @@ function renderScatterPlot() {
         <g class="scatter-point clickable" data-focus-model="${escapeHtml(model.model_name)}" data-tooltip="${escapeAttribute(
           tooltip
         )}" style="opacity:${opacity}">
-          <circle cx="${x}" cy="${y}" r="${radius}" fill="${model.color}" fill-opacity="0.8"></circle>
+          <circle cx="${x}" cy="${y}" r="${radius}" fill="${model.color}" fill-opacity="0.92" stroke="#ffffff" stroke-width="3"></circle>
           <text x="${x}" y="${y + radius + 18}" text-anchor="middle">${escapeHtml(compactName(model.model_name))}</text>
         </g>
       `;
@@ -680,7 +805,8 @@ function renderCostChart() {
       </div>
       <p class="metric-note">
         Proxy only: load time + average inference time across ${metadata.num_tests ?? 0} tests on
-        ${escapeHtml(String(metadata.device ?? "unknown"))}.
+        ${escapeHtml(String(metadata.device ?? "unknown"))}, averaged over ${metadata.repeats ?? 1}
+        run${metadata.repeats === 1 ? "" : "s"} per test.
       </p>
     </div>
     ${axis}
@@ -854,6 +980,7 @@ function renderTestCase(test) {
         <div class="test-summary-head">
           <span class="rank-badge">${escapeHtml(test.id)}</span>
           <span class="status-chip ${tone}">${test.correctCount}/${test.modelResults.length} correct</span>
+          <span class="status-chip info">${escapeHtml(getLanguageLabel(test.language))}</span>
           <span class="status-chip info">${escapeHtml(test.category)}</span>
         </div>
         <div class="sentence-block rtl">${escapeHtml(test.text)}</div>
@@ -922,6 +1049,7 @@ function renderFailureCard(failure) {
       <div class="leaderboard-tags">
         <span class="rank-badge">#${failure.rank}</span>
         <span class="status-chip ${severityClass}">${failure.confident ? "High risk" : "Low margin"}</span>
+        <span class="status-chip info">${escapeHtml(getLanguageLabel(failure.language))}</span>
         <span class="status-chip info">${escapeHtml(failure.category)}</span>
       </div>
       <h4>${escapeHtml(failure.model_name)}</h4>
@@ -953,6 +1081,7 @@ function renderFooter() {
       <span class="mini-pill">Device ${escapeHtml(String(metadata.device ?? "unknown"))}</span>
       <span class="mini-pill">${metadata.num_models ?? 0} models</span>
       <span class="mini-pill">${metadata.num_tests ?? 0} tests</span>
+      <span class="mini-pill">${metadata.repeats ?? 1} repeats</span>
       <span class="mini-pill">Score ${thresholds.score ?? 0}</span>
       <span class="mini-pill">Margin ${thresholds.margin ?? 0}</span>
     </div>
@@ -1076,6 +1205,27 @@ function renderLegend(models) {
   `;
 }
 
+function renderLanguageLegend(languages) {
+  return `
+    <div class="chart-legend">
+      ${languages
+        .map(
+          (language) => `
+            <span class="legend-item">
+              <span class="legend-swatch" style="background:${LANGUAGE_COLORS[language] ?? "#617086"}"></span>
+              <span>${escapeHtml(getLanguageLabel(language))}</span>
+            </span>
+          `
+        )
+        .join("")}
+    </div>
+  `;
+}
+
+function getScatterRadius(model) {
+  return 14 + ((model.coverage_above_threshold_pct ?? 0) / 100) * 24;
+}
+
 function renderEmpty(message) {
   return `
     <div class="empty-state">
@@ -1172,6 +1322,47 @@ function buildAxisTicks(range, count = 5) {
       ratio,
     };
   });
+}
+
+function computeAccuracyByField(results, field, orderedValues = []) {
+  const values = orderedValues.length ? orderedValues : [...new Set(results.map((result) => result[field]).filter(Boolean))];
+  return Object.fromEntries(
+    values.map((value) => {
+      const group = results.filter((result) => result[field] === value);
+      const accuracy = group.length ? (group.filter((result) => result.correct).length / group.length) * 100 : null;
+      return [value, accuracy == null ? null : round(accuracy, 6)];
+    })
+  );
+}
+
+function getOrderedLanguages(languages) {
+  const unique = [...new Set((languages ?? []).filter(Boolean))];
+  return unique.sort((left, right) => {
+    const leftIndex = LANGUAGE_ORDER.indexOf(left);
+    const rightIndex = LANGUAGE_ORDER.indexOf(right);
+    const safeLeft = leftIndex === -1 ? LANGUAGE_ORDER.length : leftIndex;
+    const safeRight = rightIndex === -1 ? LANGUAGE_ORDER.length : rightIndex;
+    return safeLeft - safeRight || left.localeCompare(right);
+  });
+}
+
+function getLanguageLabel(language) {
+  return LANGUAGE_LABELS[language] ?? String(language ?? "").toUpperCase();
+}
+
+function bilingualAverage(model) {
+  const arabic = model.languageAccuracy?.ar ?? 0;
+  const english = model.languageAccuracy?.en ?? 0;
+  if (model.languageAccuracy?.ar == null && model.languageAccuracy?.en == null) {
+    return 0;
+  }
+  if (model.languageAccuracy?.ar == null) {
+    return english;
+  }
+  if (model.languageAccuracy?.en == null) {
+    return arabic;
+  }
+  return (arabic + english) / 2;
 }
 
 function normalize(value, range) {

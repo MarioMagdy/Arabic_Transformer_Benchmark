@@ -1,7 +1,7 @@
 """
-Arabic Encoder Model Benchmark
+Multilingual Encoder Model Benchmark
 ================================
-Compares 5 encoder models on zero-shot Arabic intent classification.
+Compares 5 encoder models on zero-shot multilingual intent classification.
 
 Key improvements over the original script:
   1. Loads tests from an external JSON dataset file
@@ -23,13 +23,15 @@ from pathlib import Path
 from typing import Any, Dict, List, Tuple
 
 
-DEFAULT_DATASET_PATH = Path("data/arabic_intent_benchmark.json")
+DEFAULT_DATASET_PATH = Path("data/multilingual_intent_benchmark.json")
 DEFAULT_OUTPUT_JSON = Path("arabic_encoder_benchmark_results.json")
 DEFAULT_THRESHOLDS = {
     "score": 0.60,
     "margin": 0.04,
 }
 DEFAULT_MAX_LENGTH = 256
+DEFAULT_REPEATS = 3
+DEFAULT_WARMUP_RUNS = 1
 DEVICE = "cpu"
 COL = 26
 
@@ -52,6 +54,13 @@ ARABIC_CHAR_MAP = str.maketrans(
         "ـ": "",
     }
 )
+
+LONG_TEXT_SUFFIXES = {
+    "ar": "ويتضمن النص أيضا تفاصيل إضافية وسياقا أوضح حول الفكرة الأساسية المقصودة.",
+    "en": "It also includes extra details and clearer context about the main intended idea.",
+    "fr": "Il contient aussi des détails supplémentaires et un contexte plus clair sur l'idée principale visée.",
+    "es": "También incluye detalles adicionales y un contexto más claro sobre la idea principal prevista.",
+}
 
 
 @dataclass
@@ -113,6 +122,7 @@ MODELS = [
 @dataclass
 class TestResult:
     test_id: str
+    language: str
     category: str
     text: str
     expected_key: str
@@ -127,6 +137,9 @@ class TestResult:
     correct: bool
     confident: bool
     latency_ms: float
+    latency_std_ms: float
+    latency_runs_ms: List[float]
+    repeat_count: int
 
     def to_dict(self) -> Dict[str, Any]:
         return asdict(self)
@@ -202,6 +215,24 @@ class ModelResult:
             return 0.0
         return sum(values) / len(values)
 
+    def per_language_accuracy(self) -> Dict[str, float | None]:
+        out: Dict[str, float | None] = {}
+        languages = sorted(set(r.language for r in self.results))
+        for language in languages:
+            language_results = [r for r in self.results if r.language == language]
+            out[language] = (
+                sum(r.correct for r in language_results) / len(language_results) * 100.0
+                if language_results
+                else None
+            )
+        return out
+
+    def macro_language_accuracy(self) -> float:
+        values = [v for v in self.per_language_accuracy().values() if v is not None]
+        if not values:
+            return 0.0
+        return sum(values) / len(values)
+
     def summary_dict(self) -> Dict[str, Any]:
         conf_acc, cov = self.confident_accuracy()
         return {
@@ -211,6 +242,7 @@ class ModelResult:
             "overall_accuracy_pct": round(float(self.accuracy()), 6),
             "macro_intent_accuracy_pct": round(float(self.macro_expected_accuracy()), 6),
             "macro_category_accuracy_pct": round(float(self.macro_category_accuracy()), 6),
+            "macro_language_accuracy_pct": round(float(self.macro_language_accuracy()), 6),
             "confident_accuracy_pct": round(float(conf_acc), 6),
             "coverage_above_threshold_pct": round(float(cov), 6),
             "avg_score": round(float(self.avg_score()), 6),
@@ -223,6 +255,10 @@ class ModelResult:
             "per_expected_accuracy_pct": {
                 k: (round(float(v), 6) if v is not None else None)
                 for k, v in self.per_expected_accuracy().items()
+            },
+            "per_language_accuracy_pct": {
+                k: (round(float(v), 6) if v is not None else None)
+                for k, v in self.per_language_accuracy().items()
             },
         }
 
@@ -263,7 +299,7 @@ def initialize_runtime() -> None:
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Benchmark Arabic encoder models on an external intent dataset."
+        description="Benchmark encoder models on an external multilingual intent dataset."
     )
     parser.add_argument(
         "--dataset",
@@ -300,6 +336,18 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Disable Arabic normalization before encoding.",
     )
+    parser.add_argument(
+        "--repeats",
+        type=int,
+        default=DEFAULT_REPEATS,
+        help="Number of timed inference repeats per test for averaging.",
+    )
+    parser.add_argument(
+        "--warmup-runs",
+        type=int,
+        default=DEFAULT_WARMUP_RUNS,
+        help="Number of untimed warmup runs before repeated timing.",
+    )
     return parser.parse_args()
 
 
@@ -315,6 +363,17 @@ def preprocess_text(text: str, normalize_inputs: bool) -> str:
     return normalize_arabic_text(text) if normalize_inputs else text
 
 
+def expand_test_texts(tests: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    expanded_tests: List[Dict[str, Any]] = []
+    for test in tests:
+        suffix = LONG_TEXT_SUFFIXES.get(test.get("language", ""))
+        text = str(test.get("text", "")).strip()
+        if suffix and suffix not in text:
+            text = f"{text} {suffix}".strip()
+        expanded_tests.append({**test, "text": text})
+    return expanded_tests
+
+
 def load_benchmark_dataset(path: Path) -> BenchmarkDataset:
     if not path.exists():
         raise FileNotFoundError(f"Dataset file not found: {path}")
@@ -323,7 +382,7 @@ def load_benchmark_dataset(path: Path) -> BenchmarkDataset:
         raw = json.load(file)
 
     metadata = raw.get("metadata", {})
-    tests = raw.get("tests", [])
+    tests = expand_test_texts(raw.get("tests", []))
     label_sets = raw.get("label_sets", {})
 
     validate_benchmark_dataset(tests, label_sets)
@@ -366,7 +425,7 @@ def validate_benchmark_dataset(
             raise ValueError(
                 f"Test '{test.get('id')}' expected key '{expected}' is not present in '{label_set_name}'."
             )
-        for field in ("id", "text", "expected", "category"):
+        for field in ("id", "text", "expected", "category", "language"):
             if not test.get(field):
                 raise ValueError(f"Test is missing required field '{field}': {test}")
 
@@ -374,11 +433,13 @@ def validate_benchmark_dataset(
 def summarize_dataset(dataset: BenchmarkDataset) -> Dict[str, Any]:
     category_counts = Counter(test["category"] for test in dataset.tests)
     intent_counts = Counter(test["expected"] for test in dataset.tests)
+    language_counts = Counter(test["language"] for test in dataset.tests)
     return {
         "num_tests": len(dataset.tests),
         "num_label_sets": len(dataset.label_sets),
         "counts_by_category": dict(sorted(category_counts.items())),
         "counts_by_expected_key": dict(sorted(intent_counts.items())),
+        "counts_by_language": dict(sorted(language_counts.items())),
     }
 
 
@@ -407,12 +468,16 @@ def build_query_and_labels(
     labels: List[str],
     cfg: ModelConfig,
     normalize_inputs: bool,
+    *,
+    language: str,
 ) -> Tuple[str, List[str]]:
     clean_text = preprocess_text(text, normalize_inputs)
     clean_labels = [preprocess_text(label, normalize_inputs) for label in labels]
 
     if cfg.use_e5_prefix:
         return f"query: {clean_text}", [f"passage: {label}" for label in clean_labels]
+    if cfg.use_arabic_label_wrapper and language != "ar":
+        return clean_text, clean_labels
     if cfg.use_arabic_label_wrapper:
         return clean_text, [f"هذا النص يتحدث عن {label}" for label in clean_labels]
     return clean_text, clean_labels
@@ -455,10 +520,17 @@ def get_label_embeddings(
     cfg: ModelConfig,
     cache: Dict[Tuple[str, ...], Any],
     *,
+    language: str,
     normalize_inputs: bool,
     max_length: int,
 ) -> Any:
-    _, label_texts = build_query_and_labels("", labels, cfg, normalize_inputs)
+    _, label_texts = build_query_and_labels(
+        "",
+        labels,
+        cfg,
+        normalize_inputs,
+        language=language,
+    )
     label_key = tuple(label_texts)
     if label_key not in cache:
         cache[label_key] = encode_texts(label_texts, tokenizer, model, cfg.pooling, max_length)
@@ -473,10 +545,17 @@ def classify(
     cfg: ModelConfig,
     label_cache: Dict[Tuple[str, ...], Any],
     *,
+    language: str,
     normalize_inputs: bool,
     max_length: int,
 ):
-    q_text, _ = build_query_and_labels(text, labels, cfg, normalize_inputs)
+    q_text, _ = build_query_and_labels(
+        text,
+        labels,
+        cfg,
+        normalize_inputs,
+        language=language,
+    )
     q_emb = encode_texts([q_text], tokenizer, model, cfg.pooling, max_length)
     l_emb = get_label_embeddings(
         labels,
@@ -484,6 +563,7 @@ def classify(
         model,
         cfg,
         label_cache,
+        language=language,
         normalize_inputs=normalize_inputs,
         max_length=max_length,
     )
@@ -494,6 +574,63 @@ def classify(
     best_score = float(sims[best_idx].item())
     margin = float((sorted_scores[0] - sorted_scores[1]).item()) if len(labels) > 1 else 0.0
     return best_idx, best_score, margin, sims
+
+
+def run_repeated_classification(
+    text: str,
+    labels: List[str],
+    tokenizer,
+    model,
+    cfg: ModelConfig,
+    label_cache: Dict[Tuple[str, ...], Any],
+    *,
+    language: str,
+    normalize_inputs: bool,
+    max_length: int,
+    repeats: int,
+    warmup_runs: int,
+):
+    for _ in range(max(0, warmup_runs)):
+        classify(
+            text,
+            labels,
+            tokenizer,
+            model,
+            cfg,
+            label_cache,
+            language=language,
+            normalize_inputs=normalize_inputs,
+            max_length=max_length,
+        )
+
+    latency_runs_ms: List[float] = []
+    sims_runs = []
+    for _ in range(max(1, repeats)):
+        start_infer = time.perf_counter()
+        _, _, _, sims = classify(
+            text,
+            labels,
+            tokenizer,
+            model,
+            cfg,
+            label_cache,
+            language=language,
+            normalize_inputs=normalize_inputs,
+            max_length=max_length,
+        )
+        latency_runs_ms.append((time.perf_counter() - start_infer) * 1000.0)
+        sims_runs.append(sims)
+
+    mean_sims = torch.stack(sims_runs, dim=0).mean(dim=0)
+    sorted_scores, _ = torch.sort(mean_sims, descending=True)
+    pred_idx = int(torch.argmax(mean_sims).item())
+    score = float(mean_sims[pred_idx].item())
+    margin = float((sorted_scores[0] - sorted_scores[1]).item()) if len(labels) > 1 else 0.0
+    avg_latency_ms = sum(latency_runs_ms) / len(latency_runs_ms)
+    variance = sum((latency - avg_latency_ms) ** 2 for latency in latency_runs_ms) / len(latency_runs_ms)
+    latency_std_ms = variance ** 0.5
+
+    return pred_idx, score, margin, mean_sims, avg_latency_ms, latency_std_ms, latency_runs_ms
 
 
 def row(label: str, *vals: Any) -> str:
@@ -514,6 +651,7 @@ def print_dataset_overview(dataset: BenchmarkDataset) -> None:
     print(f"  Tests:   {summary['num_tests']}")
     print(f"  Intents: {len(summary['counts_by_expected_key'])}")
     print(f"  Label sets: {summary['num_label_sets']}")
+    print(f"  By language: {summary['counts_by_language']}")
     print(f"  By category: {summary['counts_by_category']}")
     print(f"  By intent:   {summary['counts_by_expected_key']}")
     print()
@@ -531,6 +669,7 @@ def print_summary(
     print(row("Overall Accuracy (%)", *[f"{mr.accuracy():.1f}" for mr in all_model_results]))
     print(row("Macro Intent Acc (%)", *[f"{mr.macro_expected_accuracy():.1f}" for mr in all_model_results]))
     print(row("Macro Category Acc (%)", *[f"{mr.macro_category_accuracy():.1f}" for mr in all_model_results]))
+    print(row("Macro Language Acc (%)", *[f"{mr.macro_language_accuracy():.1f}" for mr in all_model_results]))
 
     conf_accs = [mr.confident_accuracy() for mr in all_model_results]
     print(row("Confident Accuracy (%)", *[f"{ca:.1f}" for ca, _ in conf_accs]))
@@ -542,14 +681,17 @@ def print_summary(
     print("-" * 90)
 
     print("\n  PER-TEST BREAKDOWN (C = correct, W = wrong, H = high-conf, L = low-conf)\n")
-    header = f"  {'ID':<6}  {'Category':<10}  {'Text':<42}"
+    header = f"  {'ID':<8}  {'Lang':<6}  {'Category':<10}  {'Text':<42}"
     for mr in all_model_results:
         header += f"  {mr.cfg.name[:15]:>15}"
     print(header)
     print("  " + "-" * (len(header) - 2))
 
     for i, test in enumerate(dataset.tests):
-        line = f"  {test['id']:<6}  {test['category']:<10}  {test['text'][:40]:<42}"
+        line = (
+            f"  {test['id']:<8}  {test['language']:<6}  {test['category']:<10}  "
+            f"{test['text'][:40]:<42}"
+        )
         for mr in all_model_results:
             result = mr.results[i]
             sym = ("C" if result.correct else "W") + ("H" if result.confident else "L")
@@ -569,6 +711,26 @@ def print_summary(
         for mr in all_model_results:
             cat_results = [r for r in mr.results if r.category == cat]
             acc = sum(r.correct for r in cat_results) / len(cat_results) * 100.0 if cat_results else 0.0
+            line += f"  {acc:>14.0f}%"
+        print(line)
+
+    languages = sorted(set(test["language"] for test in dataset.tests))
+    print("\n  PER-LANGUAGE ACCURACY (%)\n")
+    lang_header = f"  {'Language':<12}"
+    for mr in all_model_results:
+        lang_header += f"  {mr.cfg.name[:15]:>15}"
+    print(lang_header)
+    print("  " + "-" * (len(lang_header) - 2))
+
+    for language in languages:
+        line = f"  {language:<12}"
+        for mr in all_model_results:
+            language_results = [r for r in mr.results if r.language == language]
+            acc = (
+                sum(r.correct for r in language_results) / len(language_results) * 100.0
+                if language_results
+                else 0.0
+            )
             line += f"  {acc:>14.0f}%"
         print(line)
 
@@ -607,6 +769,7 @@ def build_ranking_json(ranked: List[ModelResult]) -> List[Dict[str, Any]]:
                 "overall_accuracy_pct": round(float(mr.accuracy()), 6),
                 "macro_intent_accuracy_pct": round(float(mr.macro_expected_accuracy()), 6),
                 "macro_category_accuracy_pct": round(float(mr.macro_category_accuracy()), 6),
+                "macro_language_accuracy_pct": round(float(mr.macro_language_accuracy()), 6),
                 "confident_accuracy_pct": round(float(conf_acc), 6),
                 "coverage_above_threshold_pct": round(float(cov), 6),
                 "avg_score": round(float(mr.avg_score()), 6),
@@ -627,11 +790,13 @@ def export_results(
     *,
     normalize_inputs: bool,
     max_length: int,
+    repeats: int,
+    warmup_runs: int,
 ) -> None:
     dataset_summary = summarize_dataset(dataset)
     export_data = {
         "metadata": {
-            "benchmark_name": "Arabic Encoder Model Benchmark",
+            "benchmark_name": "Multilingual Encoder Model Benchmark",
             "dataset_name": dataset.metadata.get("name"),
             "dataset_version": dataset.metadata.get("version"),
             "dataset_path": str(dataset.path.resolve()),
@@ -642,6 +807,9 @@ def export_results(
             "thresholds": thresholds,
             "max_length": max_length,
             "normalization_enabled": normalize_inputs,
+            "repeats": repeats,
+            "warmup_runs": warmup_runs,
+            "counts_by_language": dataset_summary["counts_by_language"],
             "counts_by_category": dataset_summary["counts_by_category"],
             "counts_by_expected_key": dataset_summary["counts_by_expected_key"],
             "generated_at_unix": time.time(),
@@ -666,6 +834,8 @@ def run_benchmark(
     *,
     max_length: int,
     normalize_inputs: bool,
+    repeats: int,
+    warmup_runs: int,
 ) -> List[ModelResult]:
     all_model_results: List[ModelResult] = []
 
@@ -690,24 +860,26 @@ def run_benchmark(
             for test in dataset.tests:
                 labels, correct_idx = get_labels_and_expected_idx(test, dataset.label_sets)
 
-                start_infer = time.perf_counter()
-                pred_idx, score, margin, sims = classify(
+                pred_idx, score, margin, sims, latency_ms, latency_std_ms, latency_runs_ms = run_repeated_classification(
                     test["text"],
                     labels,
                     tokenizer,
                     model,
                     cfg,
                     label_cache,
+                    language=test["language"],
                     normalize_inputs=normalize_inputs,
                     max_length=max_length,
+                    repeats=repeats,
+                    warmup_runs=warmup_runs,
                 )
-                latency_ms = (time.perf_counter() - start_infer) * 1000.0
 
                 confident = score >= thresholds["score"] and margin >= thresholds["margin"]
                 correct = pred_idx == correct_idx
 
                 result = TestResult(
                     test_id=test["id"],
+                    language=test["language"],
                     category=test["category"],
                     text=test["text"],
                     expected_key=test["expected"],
@@ -722,6 +894,9 @@ def run_benchmark(
                     correct=bool(correct),
                     confident=bool(confident),
                     latency_ms=float(latency_ms),
+                    latency_std_ms=float(latency_std_ms),
+                    latency_runs_ms=[float(value) for value in latency_runs_ms],
+                    repeat_count=max(1, repeats),
                 )
                 model_result.results.append(result)
 
@@ -731,6 +906,7 @@ def run_benchmark(
                     f"  [{tick}|{conf}]  {test['id']:<6}  "
                     f"score={score:.4f}  margin={margin:.4f}  "
                     f"latency={latency_ms:6.1f}ms  "
+                    f"std={latency_std_ms:5.1f}  "
                     f"| {test['text'][:40]}"
                 )
 
@@ -760,13 +936,17 @@ def main() -> None:
     print_dataset_overview(dataset)
     print(f"Normalization enabled: {normalize_inputs}")
     print(f"Max length: {args.max_length}")
-    print(f"Thresholds: {thresholds}\n")
+    print(f"Thresholds: {thresholds}")
+    print(f"Repeats per test: {max(1, args.repeats)}")
+    print(f"Warmup runs per test: {max(0, args.warmup_runs)}\n")
 
     all_model_results = run_benchmark(
         dataset,
         thresholds,
         max_length=args.max_length,
         normalize_inputs=normalize_inputs,
+        repeats=max(1, args.repeats),
+        warmup_runs=max(0, args.warmup_runs),
     )
     ranked = print_summary(all_model_results, dataset)
     export_results(
@@ -777,6 +957,8 @@ def main() -> None:
         thresholds,
         normalize_inputs=normalize_inputs,
         max_length=args.max_length,
+        repeats=max(1, args.repeats),
+        warmup_runs=max(0, args.warmup_runs),
     )
 
 

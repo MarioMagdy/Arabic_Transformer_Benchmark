@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Arabic Encoder Benchmark</title>
+    <title>Multilingual Encoder Benchmark</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -16,12 +16,12 @@
     <main class="app-shell">
       <section class="hero reveal">
         <div class="hero-copy">
-          <p class="eyebrow">Arabic Encoder Benchmark</p>
-          <h1>Clear model comparison for Arabic intent classification.</h1>
+          <p class="eyebrow">Multilingual Encoder Benchmark</p>
+          <h1>Clear model comparison for multilingual intent classification.</h1>
           <p class="hero-text">
-            This report focuses on the essentials only: who wins, how fast each
-            model is, where the tradeoffs are, and which intent categories are
-            hardest.
+            This report now compares Arabic versus English directly, with French
+            and Spanish included as extra language views alongside the core
+            quality, speed, and failure analysis sections.
           </p>
           <div class="hero-actions">
             <button class="primary-button" id="loadJsonButton" type="button">
@@ -94,6 +94,21 @@
       <section class="section-header reveal">
         <div>
           <p class="section-kicker">Section 02</p>
+          <h2>Language Comparison</h2>
+        </div>
+        <p>
+          Grouped bars to compare each model in Arabic, English, French, and
+          Spanish side by side.
+        </p>
+      </section>
+
+      <section class="panel reveal">
+        <div id="languageChart"></div>
+      </section>
+
+      <section class="section-header reveal">
+        <div>
+          <p class="section-kicker">Section 03</p>
           <h2>Speed vs Quality</h2>
         </div>
         <p>
@@ -107,7 +122,7 @@
 
       <section class="section-header reveal">
         <div>
-          <p class="section-kicker">Section 03</p>
+          <p class="section-kicker">Section 04</p>
           <h2>Runtime Cost</h2>
         </div>
         <p>
@@ -122,7 +137,7 @@
 
       <section class="section-header reveal">
         <div>
-          <p class="section-kicker">Section 04</p>
+          <p class="section-kicker">Section 05</p>
           <h2>Category Accuracy</h2>
         </div>
         <p>
@@ -137,7 +152,7 @@
 
       <section class="section-header reveal">
         <div>
-          <p class="section-kicker">Section 05</p>
+          <p class="section-kicker">Section 06</p>
           <h2>Sentence Explorer</h2>
         </div>
         <p>
@@ -152,7 +167,7 @@
 
       <section class="section-header reveal">
         <div>
-          <p class="section-kicker">Section 06</p>
+          <p class="section-kicker">Section 07</p>
           <h2>Failure Analysis</h2>
         </div>
         <p>

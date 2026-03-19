@@ -1,3 +1,4 @@
+.git/
 .venv/
 __pycache__/
 .pytest_cache/
@@ -5,6 +6,3 @@ __pycache__/
 *.pyo
 *.log
 node_modules/
-arabic_encoder_benchmark_results.json
-
-.vercel
