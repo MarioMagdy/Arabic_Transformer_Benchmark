@@ -258,9 +258,13 @@ body {
 
 .toolbar-controls {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 12px;
   min-width: 62%;
+}
+
+.control-box-wide {
+  grid-column: span 2;
 }
 
 .control-box label,
@@ -279,6 +283,68 @@ body {
   font: inherit;
   color: var(--text);
   background: #fff;
+}
+
+.filter-chip-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.chip-toggle {
+  border: 1px solid var(--border);
+  background: #fff;
+  color: var(--text-soft);
+  padding: 9px 12px;
+  border-radius: 999px;
+  font: inherit;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition:
+    background 160ms ease,
+    border-color 160ms ease,
+    color 160ms ease,
+    transform 160ms ease;
+}
+
+.chip-toggle:hover {
+  transform: translateY(-1px);
+}
+
+.chip-toggle.active {
+  color: var(--text-on-dark);
+  border-color: rgba(26, 95, 255, 0.18);
+  background: linear-gradient(135deg, var(--cobalt), #477cf0);
+}
+
+.mini-bar-list {
+  display: grid;
+  gap: 10px;
+}
+
+.mini-bar-row {
+  display: grid;
+  grid-template-columns: 120px 1fr 58px;
+  gap: 12px;
+  align-items: center;
+}
+
+.mini-bar-label,
+.mini-bar-value {
+  font-size: 0.9rem;
+  color: var(--text-soft);
+}
+
+.mini-bar-track {
+  height: 12px;
+  border-radius: 999px;
+  background: var(--track);
+  overflow: hidden;
+}
+
+.mini-bar-fill {
+  height: 100%;
+  border-radius: 999px;
 }
 
 .toggle-card {
@@ -786,6 +852,10 @@ body {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  .control-box-wide {
+    grid-column: span 2;
+  }
+
   .leaderboard-main {
     grid-template-columns: 1fr;
   }
@@ -822,6 +892,14 @@ body {
   .leaderboard-metrics,
   .test-model-metrics {
     grid-template-columns: 1fr;
+  }
+
+  .control-box-wide {
+    grid-column: span 1;
+  }
+
+  .mini-bar-row {
+    grid-template-columns: 90px 1fr 50px;
   }
 
   .section-header {

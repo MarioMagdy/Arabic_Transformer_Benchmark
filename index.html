@@ -19,9 +19,9 @@
           <p class="eyebrow">Multilingual Encoder Benchmark</p>
           <h1>Clear model comparison for multilingual intent classification.</h1>
           <p class="hero-text">
-            This report now compares Arabic versus English directly, with French
-            and Spanish included as extra language views alongside the core
-            quality, speed, and failure analysis sections.
+            Compare multilingual and Arabic-specialized encoders with one
+            benchmark, switch between original and expanded text modes, and
+            inspect accuracy by language, intent family, and difficulty.
           </p>
           <div class="hero-actions">
             <button class="primary-button" id="loadJsonButton" type="button">
@@ -51,6 +51,14 @@
 
         <div class="toolbar-controls">
           <div class="control-box">
+            <label for="boardFilter">Board</label>
+            <select id="boardFilter"></select>
+          </div>
+          <div class="control-box">
+            <label for="textModeFilter">Text Mode</label>
+            <select id="textModeFilter"></select>
+          </div>
+          <div class="control-box">
             <label for="categoryFilter">Category</label>
             <select id="categoryFilter"></select>
           </div>
@@ -61,6 +69,14 @@
           <div class="control-box">
             <label for="sortMetric">Sort Leaderboard</label>
             <select id="sortMetric"></select>
+          </div>
+          <div class="control-box control-box-wide">
+            <label>Languages</label>
+            <div class="filter-chip-grid" id="languageFilters"></div>
+          </div>
+          <div class="control-box control-box-wide">
+            <label>Difficulties</label>
+            <div class="filter-chip-grid" id="difficultyFilters"></div>
           </div>
           <label class="toggle-card" for="showFailuresOnly">
             <span class="toggle-copy">
@@ -97,8 +113,8 @@
           <h2>Language Comparison</h2>
         </div>
         <p>
-          Grouped bars to compare each model in Arabic, English, French, and
-          Spanish side by side.
+          Per-model language accuracy for the active board, text mode, and
+          difficulty filters.
         </p>
       </section>
 
@@ -141,8 +157,8 @@
           <h2>Category Accuracy</h2>
         </div>
         <p>
-          The fastest way to see which intent groups are easy and which ones
-          are unstable.
+          Intent-family accuracy by model, with difficulty kept separate for
+          analysis.
         </p>
       </section>
 
@@ -156,8 +172,8 @@
           <h2>Sentence Explorer</h2>
         </div>
         <p>
-          Expand any Arabic example to inspect the exact predictions behind the
-          summary.
+          Inspect the exact prediction record behind the current multilingual
+          filters.
         </p>
       </section>
 

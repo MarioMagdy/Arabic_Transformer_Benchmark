@@ -1,15 +1,20 @@
-"""
+﻿"""
 Multilingual Encoder Model Benchmark
-================================
-Compares 5 encoder models on zero-shot multilingual intent classification.
+====================================
 
-Key improvements over the original script:
-  1. Loads tests from an external JSON dataset file
-  2. Uses a fixed global intent label space for fairer evaluation
-  3. Supports Arabic text normalization for more stable comparisons
-  4. Reports macro intent/category accuracy in addition to overall accuracy
-  5. Exposes CLI options for dataset path, output path, thresholds, and max length
+Compares encoder models on a multilingual zero-shot intent benchmark.
+
+Primary benchmark rules:
+  1. The multilingual dataset is the source of truth and is never mutated at load time.
+  2. Two text modes are evaluated:
+     - original: exact dataset text
+     - expanded: dataset text plus a language-matched suffix
+  3. Ranking uses the original-text leaderboard by default.
+  4. Category means intent family; difficulty is a separate analysis dimension.
+  5. Confidence metrics are diagnostic only and are not used for ranking.
 """
+
+from __future__ import annotations
 
 import argparse
 import gc
@@ -20,7 +25,7 @@ import time
 from collections import Counter
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, Iterable, List, Tuple
 
 
 DEFAULT_DATASET_PATH = Path("data/multilingual_intent_benchmark.json")
@@ -32,6 +37,10 @@ DEFAULT_THRESHOLDS = {
 DEFAULT_MAX_LENGTH = 256
 DEFAULT_REPEATS = 3
 DEFAULT_WARMUP_RUNS = 1
+PRIMARY_TEXT_MODE = "original"
+TEXT_MODES = ("original", "expanded")
+PRIMARY_BOARD = "all_models_comparison"
+SUPPORTED_DIFFICULTIES = ("easy", "normal", "hard")
 DEVICE = "cpu"
 COL = 26
 
@@ -62,6 +71,36 @@ LONG_TEXT_SUFFIXES = {
     "es": "También incluye detalles adicionales y un contexto más claro sobre la idea principal prevista.",
 }
 
+DIFFICULTY_MAP = {
+    "easy": "easy",
+    "simple": "easy",
+    "normal": "normal",
+    "mid": "normal",
+    "medium": "normal",
+    "hard": "hard",
+}
+
+BOARD_DEFINITIONS = {
+    "multilingual_models": {
+        "label": "Multilingual Models",
+        "description": "Models intended for multilingual comparison and default benchmark conclusions.",
+        "families": {"multilingual"},
+        "languages": None,
+    },
+    "all_models_comparison": {
+        "label": "All Models Comparison",
+        "description": "Mixed comparison board that combines multilingual and Arabic-specialized models.",
+        "families": None,
+        "languages": None,
+    },
+    "arabic_focused_comparison": {
+        "label": "Arabic Focused Comparison",
+        "description": "All models compared on Arabic and English only, useful for Arabic-first product decisions.",
+        "families": None,
+        "languages": ["ar", "en"],
+    },
+}
+
 
 @dataclass
 class BenchmarkDataset:
@@ -69,12 +108,16 @@ class BenchmarkDataset:
     metadata: Dict[str, Any]
     tests: List[Dict[str, Any]]
     label_sets: Dict[str, List[Dict[str, str]]]
+    languages: List[str]
+    categories: List[str]
+    difficulties: List[str]
 
 
 @dataclass
 class ModelConfig:
     name: str
     hf_id: str
+    family: str
     use_e5_prefix: bool = False
     use_arabic_label_wrapper: bool = True
     pooling: str = "mean"  # "mean" | "cls"
@@ -84,6 +127,7 @@ MODELS = [
     ModelConfig(
         name="multilingual-e5-small",
         hf_id="intfloat/multilingual-e5-small",
+        family="multilingual",
         use_e5_prefix=True,
         use_arabic_label_wrapper=False,
         pooling="mean",
@@ -91,6 +135,7 @@ MODELS = [
     ModelConfig(
         name="multilingual-e5-base",
         hf_id="intfloat/multilingual-e5-base",
+        family="multilingual",
         use_e5_prefix=True,
         use_arabic_label_wrapper=False,
         pooling="mean",
@@ -98,6 +143,7 @@ MODELS = [
     ModelConfig(
         name="AraBERTv02",
         hf_id="aubmindlab/bert-base-arabertv02",
+        family="arabic_specialized",
         use_e5_prefix=False,
         use_arabic_label_wrapper=True,
         pooling="mean",
@@ -105,6 +151,7 @@ MODELS = [
     ModelConfig(
         name="MARBERTv2",
         hf_id="UBC-NLP/MARBERTv2",
+        family="arabic_specialized",
         use_e5_prefix=False,
         use_arabic_label_wrapper=True,
         pooling="mean",
@@ -112,6 +159,7 @@ MODELS = [
     ModelConfig(
         name="MiniLM-L12-multilingual",
         hf_id="sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",
+        family="multilingual",
         use_e5_prefix=False,
         use_arabic_label_wrapper=True,
         pooling="mean",
@@ -122,9 +170,12 @@ MODELS = [
 @dataclass
 class TestResult:
     test_id: str
+    text_mode: str
     language: str
     category: str
+    difficulty: str
     text: str
+    evaluated_text: str
     expected_key: str
     correct_idx: int
     correct_label: str
@@ -148,126 +199,32 @@ class TestResult:
 @dataclass
 class ModelResult:
     cfg: ModelConfig
-    results: List[TestResult] = field(default_factory=list)
+    results_by_text_mode: Dict[str, List[TestResult]] = field(default_factory=dict)
     load_time_s: float = 0.0
 
-    def accuracy(self) -> float:
-        if not self.results:
-            return 0.0
-        return sum(r.correct for r in self.results) / len(self.results) * 100.0
+    def board_memberships(self) -> List[str]:
+        boards = ["all_models_comparison", "arabic_focused_comparison"]
+        if self.cfg.family == "multilingual":
+            boards.insert(0, "multilingual_models")
+        return boards
 
-    def confident_accuracy(self) -> Tuple[float, float]:
-        confident_results = [r for r in self.results if r.confident]
-        if not confident_results:
-            return 0.0, 0.0
-        acc = sum(r.correct for r in confident_results) / len(confident_results) * 100.0
-        cov = len(confident_results) / len(self.results) * 100.0
-        return acc, cov
-
-    def avg_score(self) -> float:
-        if not self.results:
-            return 0.0
-        return sum(r.score for r in self.results) / len(self.results)
-
-    def avg_margin(self) -> float:
-        if not self.results:
-            return 0.0
-        return sum(r.margin for r in self.results) / len(self.results)
-
-    def avg_latency(self) -> float:
-        if not self.results:
-            return 0.0
-        return sum(r.latency_ms for r in self.results) / len(self.results)
-
-    def per_category_accuracy(self) -> Dict[str, float | None]:
-        out: Dict[str, float | None] = {}
-        categories = sorted(set(r.category for r in self.results))
-        for cat in categories:
-            cat_results = [r for r in self.results if r.category == cat]
-            out[cat] = (
-                sum(r.correct for r in cat_results) / len(cat_results) * 100.0
-                if cat_results
-                else None
-            )
-        return out
-
-    def per_expected_accuracy(self) -> Dict[str, float | None]:
-        out: Dict[str, float | None] = {}
-        expected_keys = sorted(set(r.expected_key for r in self.results))
-        for key in expected_keys:
-            key_results = [r for r in self.results if r.expected_key == key]
-            out[key] = (
-                sum(r.correct for r in key_results) / len(key_results) * 100.0
-                if key_results
-                else None
-            )
-        return out
-
-    def macro_category_accuracy(self) -> float:
-        values = [v for v in self.per_category_accuracy().values() if v is not None]
-        if not values:
-            return 0.0
-        return sum(values) / len(values)
-
-    def macro_expected_accuracy(self) -> float:
-        values = [v for v in self.per_expected_accuracy().values() if v is not None]
-        if not values:
-            return 0.0
-        return sum(values) / len(values)
-
-    def per_language_accuracy(self) -> Dict[str, float | None]:
-        out: Dict[str, float | None] = {}
-        languages = sorted(set(r.language for r in self.results))
-        for language in languages:
-            language_results = [r for r in self.results if r.language == language]
-            out[language] = (
-                sum(r.correct for r in language_results) / len(language_results) * 100.0
-                if language_results
-                else None
-            )
-        return out
-
-    def macro_language_accuracy(self) -> float:
-        values = [v for v in self.per_language_accuracy().values() if v is not None]
-        if not values:
-            return 0.0
-        return sum(values) / len(values)
-
-    def summary_dict(self) -> Dict[str, Any]:
-        conf_acc, cov = self.confident_accuracy()
+    def summary_by_text_mode(self) -> Dict[str, Dict[str, Any]]:
         return {
-            "model_name": self.cfg.name,
-            "hf_id": self.cfg.hf_id,
-            "load_time_s": round(float(self.load_time_s), 6),
-            "overall_accuracy_pct": round(float(self.accuracy()), 6),
-            "macro_intent_accuracy_pct": round(float(self.macro_expected_accuracy()), 6),
-            "macro_category_accuracy_pct": round(float(self.macro_category_accuracy()), 6),
-            "macro_language_accuracy_pct": round(float(self.macro_language_accuracy()), 6),
-            "confident_accuracy_pct": round(float(conf_acc), 6),
-            "coverage_above_threshold_pct": round(float(cov), 6),
-            "avg_score": round(float(self.avg_score()), 6),
-            "avg_margin": round(float(self.avg_margin()), 6),
-            "avg_latency_ms": round(float(self.avg_latency()), 6),
-            "per_category_accuracy_pct": {
-                k: (round(float(v), 6) if v is not None else None)
-                for k, v in self.per_category_accuracy().items()
-            },
-            "per_expected_accuracy_pct": {
-                k: (round(float(v), 6) if v is not None else None)
-                for k, v in self.per_expected_accuracy().items()
-            },
-            "per_language_accuracy_pct": {
-                k: (round(float(v), 6) if v is not None else None)
-                for k, v in self.per_language_accuracy().items()
-            },
+            text_mode: summarize_results(self.cfg, results, self.load_time_s)
+            for text_mode, results in self.results_by_text_mode.items()
         }
 
     def to_dict(self) -> Dict[str, Any]:
         return {
             "config": asdict(self.cfg),
+            "family": self.cfg.family,
+            "board_memberships": self.board_memberships(),
             "load_time_s": round(float(self.load_time_s), 6),
-            "summary": self.summary_dict(),
-            "results": [r.to_dict() for r in self.results],
+            "summaries_by_text_mode": self.summary_by_text_mode(),
+            "results_by_text_mode": {
+                text_mode: [result.to_dict() for result in results]
+                for text_mode, results in self.results_by_text_mode.items()
+            },
         }
 
 
@@ -299,7 +256,7 @@ def initialize_runtime() -> None:
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Benchmark encoder models on an external multilingual intent dataset."
+        description="Benchmark encoder models on a multilingual intent dataset."
     )
     parser.add_argument(
         "--dataset",
@@ -363,15 +320,13 @@ def preprocess_text(text: str, normalize_inputs: bool) -> str:
     return normalize_arabic_text(text) if normalize_inputs else text
 
 
-def expand_test_texts(tests: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-    expanded_tests: List[Dict[str, Any]] = []
-    for test in tests:
-        suffix = LONG_TEXT_SUFFIXES.get(test.get("language", ""))
-        text = str(test.get("text", "")).strip()
-        if suffix and suffix not in text:
-            text = f"{text} {suffix}".strip()
-        expanded_tests.append({**test, "text": text})
-    return expanded_tests
+def normalize_difficulty(value: Any) -> str:
+    key = str(value or "").strip().lower()
+    if key not in DIFFICULTY_MAP:
+        raise ValueError(
+            f"Unsupported difficulty '{value}'. Expected one of: {sorted(set(DIFFICULTY_MAP))}."
+        )
+    return DIFFICULTY_MAP[key]
 
 
 def load_benchmark_dataset(path: Path) -> BenchmarkDataset:
@@ -382,16 +337,87 @@ def load_benchmark_dataset(path: Path) -> BenchmarkDataset:
         raw = json.load(file)
 
     metadata = raw.get("metadata", {})
-    tests = expand_test_texts(raw.get("tests", []))
     label_sets = raw.get("label_sets", {})
+    tests = normalize_tests(raw.get("tests", []), label_sets)
+    validate_benchmark_dataset(tests, label_sets, metadata, path)
 
-    validate_benchmark_dataset(tests, label_sets)
-    return BenchmarkDataset(path=path, metadata=metadata, tests=tests, label_sets=label_sets)
+    languages = sorted({test["language"] for test in tests})
+    categories = sorted({test["category"] for test in tests})
+    difficulties = [
+        difficulty
+        for difficulty in SUPPORTED_DIFFICULTIES
+        if difficulty in {test["difficulty"] for test in tests}
+    ]
+
+    return BenchmarkDataset(
+        path=path,
+        metadata=metadata,
+        tests=tests,
+        label_sets=label_sets,
+        languages=languages,
+        categories=categories,
+        difficulties=difficulties,
+    )
+
+def normalize_tests(
+    tests: List[Dict[str, Any]],
+    label_sets: Dict[str, List[Dict[str, str]]],
+) -> List[Dict[str, Any]]:
+    del label_sets
+    normalized_tests: List[Dict[str, Any]] = []
+    for raw_test in tests:
+        test = dict(raw_test)
+        label_set_name = test.get("label_set", "default")
+        expected = str(test.get("expected", "")).strip()
+        category = str(test.get("category", "")).strip() or expected
+        if category in {"faq", "hard"} and expected:
+            category = expected
+
+        difficulty_raw = test.get("difficulty")
+        if difficulty_raw is None:
+            inferred = infer_legacy_difficulty(test)
+            difficulty = inferred if inferred is not None else ""
+        else:
+            difficulty = normalize_difficulty(difficulty_raw)
+
+        normalized_tests.append(
+            {
+                **test,
+                "id": str(test.get("id", "")).strip(),
+                "text": str(test.get("text", "")).strip(),
+                "expected": expected,
+                "category": category,
+                "difficulty": difficulty,
+                "language": str(test.get("language", "")).strip(),
+                "label_set": label_set_name,
+            }
+        )
+    return normalized_tests
+
+
+def infer_legacy_difficulty(test: Dict[str, Any]) -> str | None:
+    test_id = str(test.get("id", "")).strip()
+    match = re.search(r"_(\d+)$", test_id)
+    if not match:
+        match = re.search(r"[A-Za-z]+(\d+)$", test_id)
+    if not match:
+        return None
+
+    index = int(match.group(1))
+    if index in {1, 3}:
+        return "easy"
+    if index in {2, 4}:
+        return "normal"
+    if index >= 5:
+        return "hard"
+    return None
 
 
 def validate_benchmark_dataset(
     tests: List[Dict[str, Any]],
     label_sets: Dict[str, List[Dict[str, str]]],
+    metadata: Dict[str, Any],
+    path: Path,
 ) -> None:
     if not tests:
         raise ValueError("Dataset must contain at least one test.")
@@ -402,6 +428,13 @@ def validate_benchmark_dataset(
     if len(set(test_ids)) != len(test_ids):
         raise ValueError("Test IDs must be unique.")
 
+    if any(not test.get("language") for test in tests):
+        raise ValueError(
+            f"Dataset '{path}' is missing the required 'language' field on one or more tests. "
+            "The Arabic-only dataset is now treated as legacy input and is not supported by this script."
+        )
+
+    allowed_keys = set()
     for set_name, entries in label_sets.items():
         if not entries:
             raise ValueError(f"Label set '{set_name}' is empty.")
@@ -413,6 +446,16 @@ def validate_benchmark_dataset(
             raise ValueError(f"Label set '{set_name}' contains duplicate keys.")
         if any(not label for label in labels):
             raise ValueError(f"Label set '{set_name}' contains an empty label description.")
+        allowed_keys.update(keys)
+
+    if metadata.get("languages"):
+        metadata_languages = set(metadata["languages"])
+        test_languages = {test["language"] for test in tests}
+        missing_from_metadata = test_languages - metadata_languages
+        if missing_from_metadata:
+            raise ValueError(
+                f"Dataset metadata.languages is missing languages present in tests: {sorted(missing_from_metadata)}"
+            )
 
     for test in tests:
         label_set_name = test.get("label_set", "default")
@@ -420,26 +463,38 @@ def validate_benchmark_dataset(
             raise ValueError(
                 f"Test '{test.get('id')}' references missing label set '{label_set_name}'."
             )
-        expected = test.get("expected")
-        if expected not in {entry["key"] for entry in label_sets[label_set_name]}:
-            raise ValueError(
-                f"Test '{test.get('id')}' expected key '{expected}' is not present in '{label_set_name}'."
-            )
-        for field in ("id", "text", "expected", "category", "language"):
+        for field in ("id", "text", "expected", "category", "difficulty", "language"):
             if not test.get(field):
                 raise ValueError(f"Test is missing required field '{field}': {test}")
+
+        expected = test["expected"]
+        if expected not in {entry["key"] for entry in label_sets[label_set_name]}:
+            raise ValueError(
+                f"Test '{test['id']}' expected key '{expected}' is not present in '{label_set_name}'."
+            )
+        if test["category"] not in allowed_keys:
+            raise ValueError(
+                f"Test '{test['id']}' category '{test['category']}' is not a valid intent family label key."
+            )
+        if test["difficulty"] not in SUPPORTED_DIFFICULTIES:
+            raise ValueError(
+                f"Test '{test['id']}' difficulty '{test['difficulty']}' is invalid. "
+                f"Expected one of {SUPPORTED_DIFFICULTIES}."
+            )
 
 
 def summarize_dataset(dataset: BenchmarkDataset) -> Dict[str, Any]:
     category_counts = Counter(test["category"] for test in dataset.tests)
     intent_counts = Counter(test["expected"] for test in dataset.tests)
     language_counts = Counter(test["language"] for test in dataset.tests)
+    difficulty_counts = Counter(test["difficulty"] for test in dataset.tests)
     return {
         "num_tests": len(dataset.tests),
         "num_label_sets": len(dataset.label_sets),
         "counts_by_category": dict(sorted(category_counts.items())),
         "counts_by_expected_key": dict(sorted(intent_counts.items())),
         "counts_by_language": dict(sorted(language_counts.items())),
+        "counts_by_difficulty": dict(sorted(difficulty_counts.items())),
     }
 
 
@@ -483,6 +538,19 @@ def build_query_and_labels(
     return clean_text, clean_labels
 
 
+def get_evaluation_text(text: str, language: str, text_mode: str) -> str:
+    base_text = str(text).strip()
+    if text_mode == "original":
+        return base_text
+    if text_mode != "expanded":
+        raise ValueError(f"Unsupported text mode '{text_mode}'.")
+
+    suffix = LONG_TEXT_SUFFIXES.get(language, "")
+    if suffix and suffix not in base_text:
+        return f"{base_text} {suffix}".strip()
+    return base_text
+
+
 def encode_texts(
     texts: List[str],
     tokenizer,
@@ -497,7 +565,7 @@ def encode_texts(
         truncation=True,
         return_tensors="pt",
     )
-    batch = {k: v.to(DEVICE) for k, v in batch.items()}
+    batch = {key: value.to(DEVICE) for key, value in batch.items()}
 
     with torch.no_grad():
         out = model(**batch)
@@ -575,7 +643,6 @@ def classify(
     margin = float((sorted_scores[0] - sorted_scores[1]).item()) if len(labels) > 1 else 0.0
     return best_idx, best_score, margin, sims
 
-
 def run_repeated_classification(
     text: str,
     labels: List[str],
@@ -640,150 +707,307 @@ def row(label: str, *vals: Any) -> str:
     return "  ".join(parts)
 
 
+def accuracy_pct(results: List[TestResult]) -> float:
+    if not results:
+        return 0.0
+    return sum(result.correct for result in results) / len(results) * 100.0
+
+
+def confident_accuracy(results: List[TestResult]) -> Tuple[float, float]:
+    if not results:
+        return 0.0, 0.0
+    confident_results = [result for result in results if result.confident]
+    if not confident_results:
+        return 0.0, 0.0
+    accuracy = sum(result.correct for result in confident_results) / len(confident_results) * 100.0
+    coverage = len(confident_results) / len(results) * 100.0
+    return accuracy, coverage
+
+
+def average_attr(results: List[TestResult], attr: str) -> float:
+    if not results:
+        return 0.0
+    return sum(float(getattr(result, attr)) for result in results) / len(results)
+
+
+def accuracy_by_field(
+    results: List[TestResult],
+    field: str,
+    ordered_values: Iterable[str] | None = None,
+) -> Dict[str, float | None]:
+    output: Dict[str, float | None] = {}
+    if ordered_values is None:
+        values = sorted({str(getattr(result, field)) for result in results})
+    else:
+        values = list(ordered_values)
+    for value in values:
+        subset = [result for result in results if getattr(result, field) == value]
+        output[value] = accuracy_pct(subset) if subset else None
+    return output
+
+
+def macro_accuracy(values: Dict[str, float | None]) -> float:
+    filtered = [value for value in values.values() if value is not None]
+    if not filtered:
+        return 0.0
+    return sum(filtered) / len(filtered)
+
+
+def summarize_results(
+    cfg: ModelConfig,
+    results: List[TestResult],
+    load_time_s: float,
+) -> Dict[str, Any]:
+    by_category = accuracy_by_field(results, "category")
+    by_expected = accuracy_by_field(results, "expected_key")
+    by_language = accuracy_by_field(results, "language")
+    by_difficulty = accuracy_by_field(results, "difficulty", SUPPORTED_DIFFICULTIES)
+    conf_acc, coverage = confident_accuracy(results)
+    text_mode = results[0].text_mode if results else PRIMARY_TEXT_MODE
+
+    return {
+        "model_name": cfg.name,
+        "hf_id": cfg.hf_id,
+        "family": cfg.family,
+        "text_mode": text_mode,
+        "load_time_s": round(float(load_time_s), 6),
+        "num_results": len(results),
+        "overall_accuracy_pct": round(float(accuracy_pct(results)), 6),
+        "macro_intent_accuracy_pct": round(float(macro_accuracy(by_expected)), 6),
+        "macro_category_accuracy_pct": round(float(macro_accuracy(by_category)), 6),
+        "macro_language_accuracy_pct": round(float(macro_accuracy(by_language)), 6),
+        "macro_difficulty_accuracy_pct": round(float(macro_accuracy(by_difficulty)), 6),
+        "confident_accuracy_pct": round(float(conf_acc), 6),
+        "coverage_above_threshold_pct": round(float(coverage), 6),
+        "avg_score": round(float(average_attr(results, "score")), 6),
+        "avg_margin": round(float(average_attr(results, "margin")), 6),
+        "avg_latency_ms": round(float(average_attr(results, "latency_ms")), 6),
+        "per_category_accuracy_pct": {
+            key: (round(float(value), 6) if value is not None else None)
+            for key, value in by_category.items()
+        },
+        "per_expected_accuracy_pct": {
+            key: (round(float(value), 6) if value is not None else None)
+            for key, value in by_expected.items()
+        },
+        "per_language_accuracy_pct": {
+            key: (round(float(value), 6) if value is not None else None)
+            for key, value in by_language.items()
+        },
+        "per_difficulty_accuracy_pct": {
+            key: (round(float(value), 6) if value is not None else None)
+            for key, value in by_difficulty.items()
+        },
+    }
+
+
+def get_models_for_board(
+    all_model_results: List[ModelResult],
+    board_name: str,
+) -> List[ModelResult]:
+    board_config = BOARD_DEFINITIONS[board_name]
+    families = board_config.get("families")
+    return [
+        model_result
+        for model_result in all_model_results
+        if board_name in model_result.board_memberships()
+        and (families is None or model_result.cfg.family in families)
+    ]
+
+
+def get_board_results(
+    model_result: ModelResult,
+    board_name: str,
+    text_mode: str,
+) -> List[TestResult]:
+    results = model_result.results_by_text_mode[text_mode]
+    board_languages = BOARD_DEFINITIONS[board_name].get("languages")
+    if not board_languages:
+        return results
+    return [result for result in results if result.language in set(board_languages)]
+
+
+def rank_models_for_text_mode(
+    model_results: List[ModelResult],
+    text_mode: str,
+    board_name: str,
+) -> List[ModelResult]:
+    return sorted(
+        model_results,
+        key=lambda model_result: (
+            summarize_results(model_result.cfg, get_board_results(model_result, board_name, text_mode), model_result.load_time_s)[
+                "macro_language_accuracy_pct"
+            ],
+            summarize_results(model_result.cfg, get_board_results(model_result, board_name, text_mode), model_result.load_time_s)[
+                "macro_intent_accuracy_pct"
+            ],
+            summarize_results(model_result.cfg, get_board_results(model_result, board_name, text_mode), model_result.load_time_s)[
+                "overall_accuracy_pct"
+            ],
+        ),
+        reverse=True,
+    )
+
+
+def build_ranking_json(
+    ranked: List[ModelResult],
+    text_mode: str,
+    board_name: str,
+) -> List[Dict[str, Any]]:
+    ranking_json = []
+    for rank, model_result in enumerate(ranked, 1):
+        summary = summarize_results(
+            model_result.cfg,
+            get_board_results(model_result, board_name, text_mode),
+            model_result.load_time_s,
+        )
+        ranking_json.append(
+            {
+                "rank": rank,
+                "board": board_name,
+                "text_mode": text_mode,
+                **summary,
+            }
+        )
+    return ranking_json
+
+
+def build_board_payloads(all_model_results: List[ModelResult]) -> Dict[str, Any]:
+    boards_payload: Dict[str, Any] = {}
+    for board_name, board_info in BOARD_DEFINITIONS.items():
+        board_models = get_models_for_board(all_model_results, board_name)
+        rankings_by_text_mode = {
+            text_mode: build_ranking_json(
+                rank_models_for_text_mode(board_models, text_mode, board_name),
+                text_mode,
+                board_name,
+            )
+            for text_mode in TEXT_MODES
+        }
+        boards_payload[board_name] = {
+            "key": board_name,
+            "label": board_info["label"],
+            "description": board_info["description"],
+            "default_languages": board_info.get("languages"),
+            "model_names": [model_result.cfg.name for model_result in board_models],
+            "rankings_by_text_mode": rankings_by_text_mode,
+            "default_ranking": rankings_by_text_mode[PRIMARY_TEXT_MODE],
+        }
+    return boards_payload
+
 def print_dataset_overview(dataset: BenchmarkDataset) -> None:
     summary = summarize_dataset(dataset)
-    print("=" * 65)
+    print("=" * 72)
     print("  DATASET")
-    print("=" * 65)
-    print(f"  Name:    {dataset.metadata.get('name', 'Arabic Intent Benchmark')}")
-    print(f"  Version: {dataset.metadata.get('version', 'n/a')}")
-    print(f"  Path:    {dataset.path.resolve()}")
-    print(f"  Tests:   {summary['num_tests']}")
-    print(f"  Intents: {len(summary['counts_by_expected_key'])}")
-    print(f"  Label sets: {summary['num_label_sets']}")
-    print(f"  By language: {summary['counts_by_language']}")
-    print(f"  By category: {summary['counts_by_category']}")
-    print(f"  By intent:   {summary['counts_by_expected_key']}")
+    print("=" * 72)
+    print(f"  Name:         {dataset.metadata.get('name', 'Multilingual Intent Benchmark')}")
+    print(f"  Version:      {dataset.metadata.get('version', 'n/a')}")
+    print(f"  Path:         {dataset.path.resolve()}")
+    print(f"  Tests:        {summary['num_tests']}")
+    print(f"  Intents:      {len(summary['counts_by_expected_key'])}")
+    print(f"  Label sets:   {summary['num_label_sets']}")
+    print(f"  Languages:    {summary['counts_by_language']}")
+    print(f"  Categories:   {summary['counts_by_category']}")
+    print(f"  Difficulties: {summary['counts_by_difficulty']}")
     print()
 
 
 def print_summary(
     all_model_results: List[ModelResult],
     dataset: BenchmarkDataset,
-) -> List[ModelResult]:
-    print("\n\n" + "=" * 90)
+) -> Dict[str, Any]:
+    del dataset
+    board_payloads = build_board_payloads(all_model_results)
+    primary_ranking = board_payloads[PRIMARY_BOARD]["default_ranking"]
+
+    print("\n\n" + "=" * 98)
     print("  BENCHMARK SUMMARY")
-    print("=" * 90)
-    print(row("Model", *[mr.cfg.name for mr in all_model_results]))
-    print("-" * 90)
-    print(row("Overall Accuracy (%)", *[f"{mr.accuracy():.1f}" for mr in all_model_results]))
-    print(row("Macro Intent Acc (%)", *[f"{mr.macro_expected_accuracy():.1f}" for mr in all_model_results]))
-    print(row("Macro Category Acc (%)", *[f"{mr.macro_category_accuracy():.1f}" for mr in all_model_results]))
-    print(row("Macro Language Acc (%)", *[f"{mr.macro_language_accuracy():.1f}" for mr in all_model_results]))
+    print("=" * 98)
+    print(f"  Primary board: {PRIMARY_BOARD}")
+    print(f"  Primary text mode: {PRIMARY_TEXT_MODE}")
+    print(f"  Secondary text mode: expanded")
+    print("-" * 98)
 
-    conf_accs = [mr.confident_accuracy() for mr in all_model_results]
-    print(row("Confident Accuracy (%)", *[f"{ca:.1f}" for ca, _ in conf_accs]))
-    print(row("Coverage above threshold", *[f"{cov:.1f}%" for _, cov in conf_accs]))
-    print(row("Avg Cosine Score", *[f"{mr.avg_score():.4f}" for mr in all_model_results]))
-    print(row("Avg Margin", *[f"{mr.avg_margin():.4f}" for mr in all_model_results]))
-    print(row("Avg Latency (ms)", *[f"{mr.avg_latency():.1f}" for mr in all_model_results]))
-    print(row("Load Time (s)", *[f"{mr.load_time_s:.1f}" for mr in all_model_results]))
-    print("-" * 90)
-
-    print("\n  PER-TEST BREAKDOWN (C = correct, W = wrong, H = high-conf, L = low-conf)\n")
-    header = f"  {'ID':<8}  {'Lang':<6}  {'Category':<10}  {'Text':<42}"
-    for mr in all_model_results:
-        header += f"  {mr.cfg.name[:15]:>15}"
-    print(header)
-    print("  " + "-" * (len(header) - 2))
-
-    for i, test in enumerate(dataset.tests):
-        line = (
-            f"  {test['id']:<8}  {test['language']:<6}  {test['category']:<10}  "
-            f"{test['text'][:40]:<42}"
-        )
-        for mr in all_model_results:
-            result = mr.results[i]
-            sym = ("C" if result.correct else "W") + ("H" if result.confident else "L")
-            line += f"  {f'{sym} {result.score:.3f}':>15}"
-        print(line)
-
-    categories = sorted(set(test["category"] for test in dataset.tests))
-    print("\n  PER-CATEGORY ACCURACY (%)\n")
-    cat_header = f"  {'Category':<12}"
-    for mr in all_model_results:
-        cat_header += f"  {mr.cfg.name[:15]:>15}"
-    print(cat_header)
-    print("  " + "-" * (len(cat_header) - 2))
-
-    for cat in categories:
-        line = f"  {cat:<12}"
-        for mr in all_model_results:
-            cat_results = [r for r in mr.results if r.category == cat]
-            acc = sum(r.correct for r in cat_results) / len(cat_results) * 100.0 if cat_results else 0.0
-            line += f"  {acc:>14.0f}%"
-        print(line)
-
-    languages = sorted(set(test["language"] for test in dataset.tests))
-    print("\n  PER-LANGUAGE ACCURACY (%)\n")
-    lang_header = f"  {'Language':<12}"
-    for mr in all_model_results:
-        lang_header += f"  {mr.cfg.name[:15]:>15}"
-    print(lang_header)
-    print("  " + "-" * (len(lang_header) - 2))
-
-    for language in languages:
-        line = f"  {language:<12}"
-        for mr in all_model_results:
-            language_results = [r for r in mr.results if r.language == language]
-            acc = (
-                sum(r.correct for r in language_results) / len(language_results) * 100.0
-                if language_results
-                else 0.0
-            )
-            line += f"  {acc:>14.0f}%"
-        print(line)
-
-    print("\n  RANKING BY MACRO / OVERALL ACCURACY")
-    print("  " + "-" * 58)
-    ranked = sorted(
-        all_model_results,
-        key=lambda mr: (mr.macro_expected_accuracy(), mr.accuracy(), mr.avg_margin()),
-        reverse=True,
+    ranked_models = rank_models_for_text_mode(
+        get_models_for_board(all_model_results, PRIMARY_BOARD),
+        PRIMARY_TEXT_MODE,
+        PRIMARY_BOARD,
     )
-
-    for rank, mr in enumerate(ranked, 1):
-        conf_acc, cov = mr.confident_accuracy()
+    print(row("Model", *[model_result.cfg.name for model_result in ranked_models]))
+    print("-" * 98)
+    print(
+        row(
+            "Macro Language Acc (%)",
+            *[
+                f"{summarize_results(model_result.cfg, model_result.results_by_text_mode[PRIMARY_TEXT_MODE], model_result.load_time_s)['macro_language_accuracy_pct']:.1f}"
+                for model_result in ranked_models
+            ],
+        )
+    )
+    print(
+        row(
+            "Macro Intent Acc (%)",
+            *[
+                f"{summarize_results(model_result.cfg, model_result.results_by_text_mode[PRIMARY_TEXT_MODE], model_result.load_time_s)['macro_intent_accuracy_pct']:.1f}"
+                for model_result in ranked_models
+            ],
+        )
+    )
+    print(
+        row(
+            "Overall Accuracy (%)",
+            *[
+                f"{summarize_results(model_result.cfg, model_result.results_by_text_mode[PRIMARY_TEXT_MODE], model_result.load_time_s)['overall_accuracy_pct']:.1f}"
+                for model_result in ranked_models
+            ],
+        )
+    )
+    print(
+        row(
+            "Avg Latency (ms)",
+            *[
+                f"{summarize_results(model_result.cfg, model_result.results_by_text_mode[PRIMARY_TEXT_MODE], model_result.load_time_s)['avg_latency_ms']:.1f}"
+                for model_result in ranked_models
+            ],
+        )
+    )
+    print("-" * 98)
+    print(f"\n  PRIMARY LEADERBOARD (original text, {PRIMARY_BOARD})")
+    print("  " + "-" * 82)
+    for entry in primary_ranking:
         print(
-            f"  #{rank}  {mr.cfg.name:<30}  "
-            f"macro={mr.macro_expected_accuracy():5.1f}%  "
-            f"acc={mr.accuracy():5.1f}%  "
-            f"conf_acc={conf_acc:5.1f}%  "
-            f"coverage={cov:5.1f}%  "
-            f"avg_margin={mr.avg_margin():.4f}  "
-            f"lat={mr.avg_latency():.0f}ms"
+            f"  #{entry['rank']}  {entry['model_name']:<30}  "
+            f"macro_lang={entry['macro_language_accuracy_pct']:5.1f}%  "
+            f"macro_intent={entry['macro_intent_accuracy_pct']:5.1f}%  "
+            f"overall={entry['overall_accuracy_pct']:5.1f}%  "
+            f"lat={entry['avg_latency_ms']:.0f}ms"
         )
 
-    return ranked
-
-
-def build_ranking_json(ranked: List[ModelResult]) -> List[Dict[str, Any]]:
-    ranking_json = []
-    for rank, mr in enumerate(ranked, 1):
-        conf_acc, cov = mr.confident_accuracy()
-        ranking_json.append(
-            {
-                "rank": rank,
-                "model_name": mr.cfg.name,
-                "hf_id": mr.cfg.hf_id,
-                "overall_accuracy_pct": round(float(mr.accuracy()), 6),
-                "macro_intent_accuracy_pct": round(float(mr.macro_expected_accuracy()), 6),
-                "macro_category_accuracy_pct": round(float(mr.macro_category_accuracy()), 6),
-                "macro_language_accuracy_pct": round(float(mr.macro_language_accuracy()), 6),
-                "confident_accuracy_pct": round(float(conf_acc), 6),
-                "coverage_above_threshold_pct": round(float(cov), 6),
-                "avg_score": round(float(mr.avg_score()), 6),
-                "avg_margin": round(float(mr.avg_margin()), 6),
-                "avg_latency_ms": round(float(mr.avg_latency()), 6),
-                "load_time_s": round(float(mr.load_time_s), 6),
-            }
+    print("\n  PER-LANGUAGE ACCURACY BY MODEL (original text)")
+    print("  " + "-" * 82)
+    for model_result in ranked_models:
+        summary = summarize_results(
+            model_result.cfg,
+            model_result.results_by_text_mode[PRIMARY_TEXT_MODE],
+            model_result.load_time_s,
         )
-    return ranking_json
+        per_language = summary["per_language_accuracy_pct"]
+        language_bits = ", ".join(
+            f"{language}={per_language.get(language, 0.0):.1f}%"
+            for language in sorted(per_language)
+        )
+        print(f"  {model_result.cfg.name:<30}  {language_bits}")
+
+    return {
+        "boards": board_payloads,
+        "ranking": primary_ranking,
+    }
 
 
 def export_results(
     all_model_results: List[ModelResult],
-    ranked: List[ModelResult],
+    board_payloads: Dict[str, Any],
+    default_ranking: List[Dict[str, Any]],
     dataset: BenchmarkDataset,
     output_path: Path,
     thresholds: Dict[str, float],
@@ -802,23 +1026,34 @@ def export_results(
             "dataset_path": str(dataset.path.resolve()),
             "device": str(DEVICE),
             "num_tests": len(dataset.tests),
-            "num_models": len(MODELS),
+            "num_models": len(all_model_results),
             "num_label_sets": len(dataset.label_sets),
             "thresholds": thresholds,
             "max_length": max_length,
             "normalization_enabled": normalize_inputs,
             "repeats": repeats,
             "warmup_runs": warmup_runs,
+            "text_modes": list(TEXT_MODES),
+            "primary_text_mode": PRIMARY_TEXT_MODE,
+            "primary_board": PRIMARY_BOARD,
+            "default_dashboard_view": {
+                "board": PRIMARY_BOARD,
+                "text_mode": PRIMARY_TEXT_MODE,
+                "languages": BOARD_DEFINITIONS[PRIMARY_BOARD].get("languages") or dataset.languages,
+                "difficulties": dataset.difficulties,
+            },
             "counts_by_language": dataset_summary["counts_by_language"],
             "counts_by_category": dataset_summary["counts_by_category"],
+            "counts_by_difficulty": dataset_summary["counts_by_difficulty"],
             "counts_by_expected_key": dataset_summary["counts_by_expected_key"],
             "generated_at_unix": time.time(),
         },
         "dataset_metadata": dataset.metadata,
         "tests": dataset.tests,
         "label_sets": dataset.label_sets,
-        "models": [mr.to_dict() for mr in all_model_results],
-        "ranking": build_ranking_json(ranked),
+        "boards": board_payloads,
+        "models": [model_result.to_dict() for model_result in all_model_results],
+        "ranking": default_ranking,
     }
 
     with output_path.open("w", encoding="utf-8") as file:
@@ -840,75 +1075,92 @@ def run_benchmark(
     all_model_results: List[ModelResult] = []
 
     print(f"Device: {DEVICE}\n")
-    print("=" * 65)
+    print("=" * 72)
     print("  LOADING MODELS & RUNNING BENCHMARK")
-    print("=" * 65)
+    print("=" * 72)
 
     for cfg in MODELS:
-        print(f"\n{'-' * 65}")
-        print(f"  MODEL: {cfg.name}")
-        print(f"{'-' * 65}")
+        print(f"\n{'-' * 72}")
+        print(f"  MODEL: {cfg.name}  [{cfg.family}]")
+        print(f"{'-' * 72}")
 
         start_load = time.perf_counter()
         tokenizer, model = load_model(cfg)
         load_time = time.perf_counter() - start_load
 
-        model_result = ModelResult(cfg=cfg, load_time_s=load_time)
+        model_result = ModelResult(
+            cfg=cfg,
+            load_time_s=load_time,
+            results_by_text_mode={text_mode: [] for text_mode in TEXT_MODES},
+        )
         label_cache: Dict[Tuple[str, ...], Any] = {}
 
         try:
-            for test in dataset.tests:
-                labels, correct_idx = get_labels_and_expected_idx(test, dataset.label_sets)
+            for text_mode in TEXT_MODES:
+                print(f"  Text mode: {text_mode}")
+                for test in dataset.tests:
+                    labels, correct_idx = get_labels_and_expected_idx(test, dataset.label_sets)
+                    evaluated_text = get_evaluation_text(test["text"], test["language"], text_mode)
 
-                pred_idx, score, margin, sims, latency_ms, latency_std_ms, latency_runs_ms = run_repeated_classification(
-                    test["text"],
-                    labels,
-                    tokenizer,
-                    model,
-                    cfg,
-                    label_cache,
-                    language=test["language"],
-                    normalize_inputs=normalize_inputs,
-                    max_length=max_length,
-                    repeats=repeats,
-                    warmup_runs=warmup_runs,
-                )
+                    (
+                        pred_idx,
+                        score,
+                        margin,
+                        sims,
+                        latency_ms,
+                        latency_std_ms,
+                        latency_runs_ms,
+                    ) = run_repeated_classification(
+                        evaluated_text,
+                        labels,
+                        tokenizer,
+                        model,
+                        cfg,
+                        label_cache,
+                        language=test["language"],
+                        normalize_inputs=normalize_inputs,
+                        max_length=max_length,
+                        repeats=repeats,
+                        warmup_runs=warmup_runs,
+                    )
 
-                confident = score >= thresholds["score"] and margin >= thresholds["margin"]
-                correct = pred_idx == correct_idx
+                    confident = score >= thresholds["score"] and margin >= thresholds["margin"]
+                    correct = pred_idx == correct_idx
 
-                result = TestResult(
-                    test_id=test["id"],
-                    language=test["language"],
-                    category=test["category"],
-                    text=test["text"],
-                    expected_key=test["expected"],
-                    correct_idx=correct_idx,
-                    correct_label=labels[correct_idx],
-                    pred_idx=pred_idx,
-                    pred_label=labels[pred_idx],
-                    score=float(score),
-                    margin=float(margin),
-                    all_scores=[float(x) for x in sims.detach().cpu().tolist()],
-                    labels=labels,
-                    correct=bool(correct),
-                    confident=bool(confident),
-                    latency_ms=float(latency_ms),
-                    latency_std_ms=float(latency_std_ms),
-                    latency_runs_ms=[float(value) for value in latency_runs_ms],
-                    repeat_count=max(1, repeats),
-                )
-                model_result.results.append(result)
+                    result = TestResult(
+                        test_id=test["id"],
+                        text_mode=text_mode,
+                        language=test["language"],
+                        category=test["category"],
+                        difficulty=test["difficulty"],
+                        text=test["text"],
+                        evaluated_text=evaluated_text,
+                        expected_key=test["expected"],
+                        correct_idx=correct_idx,
+                        correct_label=labels[correct_idx],
+                        pred_idx=pred_idx,
+                        pred_label=labels[pred_idx],
+                        score=float(score),
+                        margin=float(margin),
+                        all_scores=[float(x) for x in sims.detach().cpu().tolist()],
+                        labels=labels,
+                        correct=bool(correct),
+                        confident=bool(confident),
+                        latency_ms=float(latency_ms),
+                        latency_std_ms=float(latency_std_ms),
+                        latency_runs_ms=[float(value) for value in latency_runs_ms],
+                        repeat_count=max(1, repeats),
+                    )
+                    model_result.results_by_text_mode[text_mode].append(result)
 
-                tick = "C" if correct else "W"
-                conf = "H" if confident else "L"
-                print(
-                    f"  [{tick}|{conf}]  {test['id']:<6}  "
-                    f"score={score:.4f}  margin={margin:.4f}  "
-                    f"latency={latency_ms:6.1f}ms  "
-                    f"std={latency_std_ms:5.1f}  "
-                    f"| {test['text'][:40]}"
-                )
+                    tick = "C" if correct else "W"
+                    conf = "H" if confident else "L"
+                    print(
+                        f"    [{tick}|{conf}]  {text_mode:<8}  {test['id']:<18}  "
+                        f"score={score:.4f}  margin={margin:.4f}  "
+                        f"lat={latency_ms:6.1f}ms  "
+                        f"| {test['text'][:36]}"
+                    )
 
             all_model_results.append(model_result)
         finally:
@@ -926,6 +1178,8 @@ def main() -> None:
     args = parse_args()
     initialize_runtime()
 
+    repeats = max(1, args.repeats)
+    warmup_runs = max(0, args.warmup_runs)
     dataset = load_benchmark_dataset(args.dataset)
     thresholds = {
         "score": args.score_threshold,
@@ -937,28 +1191,31 @@ def main() -> None:
     print(f"Normalization enabled: {normalize_inputs}")
     print(f"Max length: {args.max_length}")
     print(f"Thresholds: {thresholds}")
-    print(f"Repeats per test: {max(1, args.repeats)}")
-    print(f"Warmup runs per test: {max(0, args.warmup_runs)}\n")
+    print(f"Text modes: {TEXT_MODES}")
+    print(f"Primary board/text mode: {PRIMARY_BOARD} / {PRIMARY_TEXT_MODE}")
+    print(f"Repeats per test: {repeats}")
+    print(f"Warmup runs per test: {warmup_runs}\n")
 
     all_model_results = run_benchmark(
         dataset,
         thresholds,
         max_length=args.max_length,
         normalize_inputs=normalize_inputs,
-        repeats=max(1, args.repeats),
-        warmup_runs=max(0, args.warmup_runs),
+        repeats=repeats,
+        warmup_runs=warmup_runs,
     )
-    ranked = print_summary(all_model_results, dataset)
+    summary_payload = print_summary(all_model_results, dataset)
     export_results(
         all_model_results,
-        ranked,
+        summary_payload["boards"],
+        summary_payload["ranking"],
         dataset,
         args.output,
         thresholds,
         normalize_inputs=normalize_inputs,
         max_length=args.max_length,
-        repeats=max(5, args.repeats),
-        warmup_runs=max(1, args.warmup_runs),
+        repeats=repeats,
+        warmup_runs=warmup_runs,
     )
 
 

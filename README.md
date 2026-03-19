@@ -7,11 +7,13 @@ A benchmark project for comparing encoder models on zero-shot intent classificat
 This repo now uses:
 
 - an external multilingual benchmark dataset in [data/multilingual_intent_benchmark.json](./data/multilingual_intent_benchmark.json)
-- a fixed global intent label space for fairer evaluation
+- a fixed multilingual intent label space for fairer evaluation
 - matched multilingual test examples across Arabic, English, French, and Spanish
-- macro intent accuracy and macro category accuracy in addition to overall accuracy
-- per-language accuracy so Arabic vs English performance is visible per model
-- a standalone dashboard for exploring language comparison, speed, confidence, margins, and failure cases
+- two text modes: `original` and `expanded`
+- separate comparison boards for all-model comparison, multilingual-only comparison, and an Arabic-focused all-model comparison
+- semantic `category` labels plus separate `difficulty` labels
+- per-language, per-intent, and per-difficulty accuracy in the exported JSON
+- a standalone dashboard for exploring board, language, difficulty, and text-mode comparisons
 
 ## Project Structure
 
@@ -94,6 +96,7 @@ The script now reports:
 - macro intent accuracy
 - macro category accuracy
 - macro language accuracy
+- macro difficulty accuracy
 - confident accuracy
 - coverage above threshold
 - average score
@@ -134,7 +137,8 @@ To add more benchmark cases:
 1. Open the dataset file.
 2. Add a new test object with a unique `id`.
 3. Make sure `expected` exists in the selected `label_set`.
-4. Re-run the benchmark script.
+4. Add `difficulty` as `easy`, `normal`, or `hard`.
+5. Re-run the benchmark script.
 
 ## Open The Dashboard
 
@@ -152,19 +156,20 @@ http://127.0.0.1:8000/index.html
 
 The dashboard shows:
 
-- winner and KPI overview
-- sortable leaderboard
+- board-aware leaderboard
 - language comparison bars
 - speed vs accuracy scatter
 - runtime cost proxy
-- category heatmap
+- intent-family heatmap
 - sentence explorer
 - failure analysis
+- filters for language, difficulty, and text mode
 
 If you open the page directly without a server, use the **Load Benchmark JSON** button and choose the results file manually.
 
 ## Notes
 
-- The benchmark can take a while on CPU because it loads several encoder models.
+- The benchmark can take a while on CPU because it loads several encoder models and evaluates both text modes.
 - Model downloads may require internet access the first time.
 - The dashboard is static HTML/CSS/JS and does not need a frontend build step.
+- The Arabic-only dataset is now legacy reference data; the benchmark script targets the multilingual dataset.
