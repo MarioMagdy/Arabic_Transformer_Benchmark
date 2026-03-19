@@ -127,6 +127,126 @@
     { "id": "ar_appointment_2", "language": "ar", "text": "أريد إعادة جدولة موعد العيادة إلى يوم الثلاثاء", "expected": "appointment", "category": "hard", "label_set": "ar" },
     { "id": "en_appointment_2", "language": "en", "text": "I want to reschedule my clinic appointment to Tuesday", "expected": "appointment", "category": "hard", "label_set": "en" },
     { "id": "fr_appointment_2", "language": "fr", "text": "Je veux reporter mon rendez-vous à la clinique à mardi", "expected": "appointment", "category": "hard", "label_set": "fr" },
-    { "id": "es_appointment_2", "language": "es", "text": "Quiero reprogramar mi cita en la clínica para el martes", "expected": "appointment", "category": "hard", "label_set": "es" }
-  ]
+    { "id": "es_appointment_2", "language": "es", "text": "Quiero reprogramar mi cita en la clínica para el martes", "expected": "appointment", "category": "hard", "label_set": "es" },
+    
+  { "id": "ar_sports_3", "language": "ar", "text": "من فاز بالمباراة أمس", "expected": "sports", "category": "sports", "difficulty": "simple", "label_set": "ar" },
+  { "id": "en_sports_3", "language": "en", "text": "Who won the match yesterday", "expected": "sports", "category": "sports", "difficulty": "simple", "label_set": "en" },
+  { "id": "fr_sports_3", "language": "fr", "text": "Qui a gagné le match hier", "expected": "sports", "category": "sports", "difficulty": "simple", "label_set": "fr" },
+  { "id": "es_sports_3", "language": "es", "text": "Quién ganó el partido ayer", "expected": "sports", "category": "sports", "difficulty": "simple", "label_set": "es" },
+
+  { "id": "ar_sports_4", "language": "ar", "text": "غير المدرب الخطة بعد الاستراحة فعاد الفريق وفاز بالمباراة", "expected": "sports", "category": "sports", "difficulty": "mid", "label_set": "ar" },
+  { "id": "en_sports_4", "language": "en", "text": "The coach changed the formation after halftime and the team came back to win", "expected": "sports", "category": "sports", "difficulty": "mid", "label_set": "en" },
+  { "id": "fr_sports_4", "language": "fr", "text": "L'entraîneur a changé le dispositif à la mi-temps et l'équipe est revenue pour gagner", "expected": "sports", "category": "sports", "difficulty": "mid", "label_set": "fr" },
+  { "id": "es_sports_4", "language": "es", "text": "El entrenador cambió la formación en el descanso y el equipo remontó para ganar", "expected": "sports", "category": "sports", "difficulty": "mid", "label_set": "es" },
+
+  { "id": "ar_sports_5", "language": "ar", "text": "بعد الوقت الإضافي وركلات الترجيح رفع القائد الكأس وسط هتاف الجماهير", "expected": "sports", "category": "sports", "difficulty": "hard", "label_set": "ar" },
+  { "id": "en_sports_5", "language": "en", "text": "After extra time and penalties, the captain lifted the trophy as the crowd roared", "expected": "sports", "category": "sports", "difficulty": "hard", "label_set": "en" },
+  { "id": "fr_sports_5", "language": "fr", "text": "Après la prolongation et les tirs au but, le capitaine a soulevé le trophée sous les acclamations du public", "expected": "sports", "category": "sports", "difficulty": "hard", "label_set": "fr" },
+  { "id": "es_sports_5", "language": "es", "text": "Tras la prórroga y los penales, el capitán levantó el trofeo mientras la afición celebraba", "expected": "sports", "category": "sports", "difficulty": "hard", "label_set": "es" },
+
+  { "id": "ar_politics_3", "language": "ar", "text": "متى سيتم إعلان نتائج الانتخابات", "expected": "politics", "category": "politics", "difficulty": "simple", "label_set": "ar" },
+  { "id": "en_politics_3", "language": "en", "text": "When will the election results be announced", "expected": "politics", "category": "politics", "difficulty": "simple", "label_set": "en" },
+  { "id": "fr_politics_3", "language": "fr", "text": "Quand les résultats des élections seront-ils annoncés", "expected": "politics", "category": "politics", "difficulty": "simple", "label_set": "fr" },
+  { "id": "es_politics_3", "language": "es", "text": "Cuándo se anunciarán los resultados de las elecciones", "expected": "politics", "category": "politics", "difficulty": "simple", "label_set": "es" },
+
+  { "id": "ar_politics_4", "language": "ar", "text": "وافق مجلس الوزراء على مسودة القانون وأحالها إلى البرلمان للمناقشة", "expected": "politics", "category": "politics", "difficulty": "mid", "label_set": "ar" },
+  { "id": "en_politics_4", "language": "en", "text": "The cabinet approved the draft law and sent it to parliament for debate", "expected": "politics", "category": "politics", "difficulty": "mid", "label_set": "en" },
+  { "id": "fr_politics_4", "language": "fr", "text": "Le gouvernement a approuvé le projet de loi et l'a transmis au parlement pour débat", "expected": "politics", "category": "politics", "difficulty": "mid", "label_set": "fr" },
+  { "id": "es_politics_4", "language": "es", "text": "El gabinete aprobó el proyecto de ley y lo envió al parlamento para debate", "expected": "politics", "category": "politics", "difficulty": "mid", "label_set": "es" },
+
+  { "id": "ar_politics_5", "language": "ar", "text": "رفضت أحزاب المعارضة اتفاق الائتلاف بعد مفاوضات ليلية مع الوزراء", "expected": "politics", "category": "politics", "difficulty": "hard", "label_set": "ar" },
+  { "id": "en_politics_5", "language": "en", "text": "Opposition parties rejected the coalition deal after overnight talks with ministers", "expected": "politics", "category": "politics", "difficulty": "hard", "label_set": "en" },
+  { "id": "fr_politics_5", "language": "fr", "text": "Les partis d'opposition ont rejeté l'accord de coalition après des négociations nocturnes avec les ministres", "expected": "politics", "category": "politics", "difficulty": "hard", "label_set": "fr" },
+  { "id": "es_politics_5", "language": "es", "text": "Los partidos de oposición rechazaron el acuerdo de coalición tras negociaciones nocturnas con los ministros", "expected": "politics", "category": "politics", "difficulty": "hard", "label_set": "es" },
+
+  { "id": "ar_business_3", "language": "ar", "text": "أطلق البنك حساب ادخار جديدا لأصحاب المشاريع الصغيرة", "expected": "business", "category": "business", "difficulty": "simple", "label_set": "ar" },
+  { "id": "en_business_3", "language": "en", "text": "The bank launched a new savings account for small business owners", "expected": "business", "category": "business", "difficulty": "simple", "label_set": "en" },
+  { "id": "fr_business_3", "language": "fr", "text": "La banque a lancé un nouveau compte d'épargne pour les petits entrepreneurs", "expected": "business", "category": "business", "difficulty": "simple", "label_set": "fr" },
+  { "id": "es_business_3", "language": "es", "text": "El banco lanzó una nueva cuenta de ahorro para pequeños empresarios", "expected": "business", "category": "business", "difficulty": "simple", "label_set": "es" },
+
+  { "id": "ar_business_4", "language": "ar", "text": "انخفضت الإيرادات الفصلية لكن هوامش الربح تحسنت بعد خفض التكاليف", "expected": "business", "category": "business", "difficulty": "mid", "label_set": "ar" },
+  { "id": "en_business_4", "language": "en", "text": "Quarterly revenue fell, but profit margins improved after cost cuts", "expected": "business", "category": "business", "difficulty": "mid", "label_set": "en" },
+  { "id": "fr_business_4", "language": "fr", "text": "Le chiffre d'affaires trimestriel a baissé, mais les marges se sont améliorées après des réductions de coûts", "expected": "business", "category": "business", "difficulty": "mid", "label_set": "fr" },
+  { "id": "es_business_4", "language": "es", "text": "Los ingresos trimestrales bajaron, pero los márgenes mejoraron tras recortes de costos", "expected": "business", "category": "business", "difficulty": "mid", "label_set": "es" },
+
+  { "id": "ar_business_5", "language": "ar", "text": "باع المستثمرون السهم بعد خفض التوقعات رغم تحسن التدفقات النقدية", "expected": "business", "category": "business", "difficulty": "hard", "label_set": "ar" },
+  { "id": "en_business_5", "language": "en", "text": "Investors sold the stock after guidance was cut despite better cash flow", "expected": "business", "category": "business", "difficulty": "hard", "label_set": "en" },
+  { "id": "fr_business_5", "language": "fr", "text": "Les investisseurs ont vendu l'action après la révision à la baisse des prévisions malgré un meilleur flux de trésorerie", "expected": "business", "category": "business", "difficulty": "hard", "label_set": "fr" },
+  { "id": "es_business_5", "language": "es", "text": "Los inversores vendieron la acción tras recortar las previsiones pese a una mejor caja", "expected": "business", "category": "business", "difficulty": "hard", "label_set": "es" },
+
+  { "id": "ar_greeting_3", "language": "ar", "text": "مساء الخير هل يمكنك مساعدتي", "expected": "greeting", "category": "greeting", "difficulty": "simple", "label_set": "ar" },
+  { "id": "en_greeting_3", "language": "en", "text": "Good evening, can you help me", "expected": "greeting", "category": "greeting", "difficulty": "simple", "label_set": "en" },
+  { "id": "fr_greeting_3", "language": "fr", "text": "Bonsoir, pouvez-vous m'aider", "expected": "greeting", "category": "greeting", "difficulty": "simple", "label_set": "fr" },
+  { "id": "es_greeting_3", "language": "es", "text": "Buenas tardes, ¿puedes ayudarme?", "expected": "greeting", "category": "greeting", "difficulty": "simple", "label_set": "es" },
+
+  { "id": "ar_greeting_4", "language": "ar", "text": "مرحبا لدي سؤال سريع قبل أن أكمل طلبي", "expected": "greeting", "category": "greeting", "difficulty": "mid", "label_set": "ar" },
+  { "id": "en_greeting_4", "language": "en", "text": "Hello, I have a quick question before I place my order", "expected": "greeting", "category": "greeting", "difficulty": "mid", "label_set": "en" },
+  { "id": "fr_greeting_4", "language": "fr", "text": "Bonjour, j'ai une petite question avant de passer ma commande", "expected": "greeting", "category": "greeting", "difficulty": "mid", "label_set": "fr" },
+  { "id": "es_greeting_4", "language": "es", "text": "Hola, tengo una pregunta rápida antes de hacer mi pedido", "expected": "greeting", "category": "greeting", "difficulty": "mid", "label_set": "es" },
+
+  { "id": "ar_greeting_5", "language": "ar", "text": "أهلا هل أنت موجود أحتاج فقط إلى بعض المساعدة", "expected": "greeting", "category": "greeting", "difficulty": "hard", "label_set": "ar" },
+  { "id": "en_greeting_5", "language": "en", "text": "Hey, are you there? I just need a little help", "expected": "greeting", "category": "greeting", "difficulty": "hard", "label_set": "en" },
+  { "id": "fr_greeting_5", "language": "fr", "text": "Salut, vous êtes là ? J'ai juste besoin d'un peu d'aide", "expected": "greeting", "category": "greeting", "difficulty": "hard", "label_set": "fr" },
+  { "id": "es_greeting_5", "language": "es", "text": "Hola, ¿estás ahí? Solo necesito un poco de ayuda", "expected": "greeting", "category": "greeting", "difficulty": "hard", "label_set": "es" },
+
+  { "id": "ar_shipping_3", "language": "ar", "text": "هل توصلون إلى الجيزة", "expected": "shipping", "category": "shipping", "difficulty": "simple", "label_set": "ar" },
+  { "id": "en_shipping_3", "language": "en", "text": "Do you deliver to Giza", "expected": "shipping", "category": "shipping", "difficulty": "simple", "label_set": "en" },
+  { "id": "fr_shipping_3", "language": "fr", "text": "Livrez-vous à Gizeh", "expected": "shipping", "category": "shipping", "difficulty": "simple", "label_set": "fr" },
+  { "id": "es_shipping_3", "language": "es", "text": "¿Hacen envíos a Giza?", "expected": "shipping", "category": "shipping", "difficulty": "simple", "label_set": "es" },
+
+  { "id": "ar_shipping_4", "language": "ar", "text": "غادر طلبي المستودع أمس فمتى يفترض أن يصل", "expected": "shipping", "category": "shipping", "difficulty": "mid", "label_set": "ar" },
+  { "id": "en_shipping_4", "language": "en", "text": "My order left the warehouse yesterday, when should it arrive", "expected": "shipping", "category": "shipping", "difficulty": "mid", "label_set": "en" },
+  { "id": "fr_shipping_4", "language": "fr", "text": "Ma commande a quitté l'entrepôt hier, quand devrait-elle arriver", "expected": "shipping", "category": "shipping", "difficulty": "mid", "label_set": "fr" },
+  { "id": "es_shipping_4", "language": "es", "text": "Mi pedido salió del almacén ayer, ¿cuándo debería llegar?", "expected": "shipping", "category": "shipping", "difficulty": "mid", "label_set": "es" },
+
+  { "id": "ar_shipping_5", "language": "ar", "text": "التتبع لم يتغير منذ ثلاثة أيام وأنا أحتاج الطرد قبل الجمعة", "expected": "shipping", "category": "shipping", "difficulty": "hard", "label_set": "ar" },
+  { "id": "en_shipping_5", "language": "en", "text": "The tracking status has not changed for three days and I need the package before Friday", "expected": "shipping", "category": "shipping", "difficulty": "hard", "label_set": "en" },
+  { "id": "fr_shipping_5", "language": "fr", "text": "Le suivi n'a pas changé depuis trois jours et j'ai besoin du colis avant vendredi", "expected": "shipping", "category": "shipping", "difficulty": "hard", "label_set": "fr" },
+  { "id": "es_shipping_5", "language": "es", "text": "El seguimiento no ha cambiado en tres días y necesito el paquete antes del viernes", "expected": "shipping", "category": "shipping", "difficulty": "hard", "label_set": "es" },
+
+  { "id": "ar_returns_3", "language": "ar", "text": "أريد إرجاع هذه القطعة", "expected": "returns", "category": "returns", "difficulty": "simple", "label_set": "ar" },
+  { "id": "en_returns_3", "language": "en", "text": "I want to return this item", "expected": "returns", "category": "returns", "difficulty": "simple", "label_set": "en" },
+  { "id": "fr_returns_3", "language": "fr", "text": "Je veux retourner cet article", "expected": "returns", "category": "returns", "difficulty": "simple", "label_set": "fr" },
+  { "id": "es_returns_3", "language": "es", "text": "Quiero devolver este artículo", "expected": "returns", "category": "returns", "difficulty": "simple", "label_set": "es" },
+
+  { "id": "ar_returns_4", "language": "ar", "text": "الحذاء ضيق هل يمكن استبداله بمقاس أكبر", "expected": "returns", "category": "returns", "difficulty": "mid", "label_set": "ar" },
+  { "id": "en_returns_4", "language": "en", "text": "The shoes are too small, can I exchange them for a bigger size", "expected": "returns", "category": "returns", "difficulty": "mid", "label_set": "en" },
+  { "id": "fr_returns_4", "language": "fr", "text": "Les chaussures sont trop petites, puis-je les échanger contre une taille au-dessus", "expected": "returns", "category": "returns", "difficulty": "mid", "label_set": "fr" },
+  { "id": "es_returns_4", "language": "es", "text": "Los zapatos me quedan pequeños, ¿puedo cambiarlos por una talla más grande?", "expected": "returns", "category": "returns", "difficulty": "mid", "label_set": "es" },
+
+  { "id": "ar_returns_5", "language": "ar", "text": "فتحت العلبة ووجدت أن اللون مختلف عن الصور فما الحل", "expected": "returns", "category": "returns", "difficulty": "hard", "label_set": "ar" },
+  { "id": "en_returns_5", "language": "en", "text": "I opened the box and found the color different from the photos, what should I do", "expected": "returns", "category": "returns", "difficulty": "hard", "label_set": "en" },
+  { "id": "fr_returns_5", "language": "fr", "text": "J'ai ouvert la boîte et j'ai trouvé une couleur différente de celle des photos, que dois-je faire", "expected": "returns", "category": "returns", "difficulty": "hard", "label_set": "fr" },
+  { "id": "es_returns_5", "language": "es", "text": "Abrí la caja y vi que el color es diferente al de las fotos, ¿qué debería hacer?", "expected": "returns", "category": "returns", "difficulty": "hard", "label_set": "es" },
+
+  { "id": "ar_product_3", "language": "ar", "text": "هل يمكنك ترشيح لابتوب مناسب للتصميم", "expected": "product_recommendation", "category": "product_recommendation", "difficulty": "simple", "label_set": "ar" },
+  { "id": "en_product_3", "language": "en", "text": "Can you recommend a laptop for design work", "expected": "product_recommendation", "category": "product_recommendation", "difficulty": "simple", "label_set": "en" },
+  { "id": "fr_product_3", "language": "fr", "text": "Pouvez-vous recommander un ordinateur portable pour le design", "expected": "product_recommendation", "category": "product_recommendation", "difficulty": "simple", "label_set": "fr" },
+  { "id": "es_product_3", "language": "es", "text": "¿Puedes recomendarme una laptop para diseño?", "expected": "product_recommendation", "category": "product_recommendation", "difficulty": "simple", "label_set": "es" },
+
+  { "id": "ar_product_4", "language": "ar", "text": "أحتاج سماعات ببطارية قوية للمواصلات ومكالمات العمل", "expected": "product_recommendation", "category": "product_recommendation", "difficulty": "mid", "label_set": "ar" },
+  { "id": "en_product_4", "language": "en", "text": "I need headphones with strong battery life for commuting and work calls", "expected": "product_recommendation", "category": "product_recommendation", "difficulty": "mid", "label_set": "en" },
+  { "id": "fr_product_4", "language": "fr", "text": "J'ai besoin d'écouteurs avec une bonne autonomie pour les trajets et les appels de travail", "expected": "product_recommendation", "category": "product_recommendation", "difficulty": "mid", "label_set": "fr" },
+  { "id": "es_product_4", "language": "es", "text": "Necesito audífonos con buena batería para los trayectos y las llamadas de trabajo", "expected": "product_recommendation", "category": "product_recommendation", "difficulty": "mid", "label_set": "es" },
+
+  { "id": "ar_product_5", "language": "ar", "text": "أجلس لساعات طويلة وأعاني من ألم أسفل الظهر فما الكرسي الأنسب لي", "expected": "product_recommendation", "category": "product_recommendation", "difficulty": "hard", "label_set": "ar" },
+  { "id": "en_product_5", "language": "en", "text": "I sit for long hours and have lower back pain, which office chair would suit me best", "expected": "product_recommendation", "category": "product_recommendation", "difficulty": "hard", "label_set": "en" },
+  { "id": "fr_product_5", "language": "fr", "text": "Je reste assis de longues heures et j'ai mal au bas du dos, quelle chaise de bureau me conviendrait le mieux", "expected": "product_recommendation", "category": "product_recommendation", "difficulty": "hard", "label_set": "fr" },
+  { "id": "es_product_5", "language": "es", "text": "Paso muchas horas sentado y me duele la zona lumbar, ¿qué silla de oficina me conviene más?", "expected": "product_recommendation", "category": "product_recommendation", "difficulty": "hard", "label_set": "es" },
+
+  { "id": "ar_appointment_3", "language": "ar", "text": "أريد حجز موعد يوم الاثنين", "expected": "appointment", "category": "appointment", "difficulty": "simple", "label_set": "ar" },
+  { "id": "en_appointment_3", "language": "en", "text": "I want to book an appointment for Monday", "expected": "appointment", "category": "appointment", "difficulty": "simple", "label_set": "en" },
+  { "id": "fr_appointment_3", "language": "fr", "text": "Je veux prendre un rendez-vous pour lundi", "expected": "appointment", "category": "appointment", "difficulty": "simple", "label_set": "fr" },
+  { "id": "es_appointment_3", "language": "es", "text": "Quiero reservar una cita para el lunes", "expected": "appointment", "category": "appointment", "difficulty": "simple", "label_set": "es" },
+
+  { "id": "ar_appointment_4", "language": "ar", "text": "هل يمكن نقل موعدي من الثالثة إلى الخامسة غدا", "expected": "appointment", "category": "appointment", "difficulty": "mid", "label_set": "ar" },
+  { "id": "en_appointment_4", "language": "en", "text": "Can you move my appointment from 3 PM to 5 PM tomorrow", "expected": "appointment", "category": "appointment", "difficulty": "mid", "label_set": "en" },
+  { "id": "fr_appointment_4", "language": "fr", "text": "Pouvez-vous déplacer mon rendez-vous de 15 h à 17 h demain", "expected": "appointment", "category": "appointment", "difficulty": "mid", "label_set": "fr" },
+  { "id": "es_appointment_4", "language": "es", "text": "¿Pueden mover mi cita de las 3 p. m. a las 5 p. m. mañana?", "expected": "appointment", "category": "appointment", "difficulty": "mid", "label_set": "es" },
+
+  { "id": "ar_appointment_5", "language": "ar", "text": "قد أتأخر بسبب الزحام فهل يمكن تأخير الموعد مع نفس الطبيب", "expected": "appointment", "category": "appointment", "difficulty": "hard", "label_set": "ar" },
+  { "id": "en_appointment_5", "language": "en", "text": "I may be late because of traffic, can the appointment be pushed back with the same doctor", "expected": "appointment", "category": "appointment", "difficulty": "hard", "label_set": "en" },
+  { "id": "fr_appointment_5", "language": "fr", "text": "Je risque d'être en retard à cause du trafic, peut-on décaler le rendez-vous avec le même médecin", "expected": "appointment", "category": "appointment", "difficulty": "hard", "label_set": "fr" },
+  { "id": "es_appointment_5", "language": "es", "text": "Puede que llegue tarde por el tráfico, ¿se puede retrasar la cita con el mismo doctor?", "expected": "appointment", "category": "appointment", "difficulty": "hard", "label_set": "es" }
+]
 }

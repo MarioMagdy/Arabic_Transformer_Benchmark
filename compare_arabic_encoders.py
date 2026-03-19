@@ -957,8 +957,8 @@ def main() -> None:
         thresholds,
         normalize_inputs=normalize_inputs,
         max_length=args.max_length,
-        repeats=max(1, args.repeats),
-        warmup_runs=max(0, args.warmup_runs),
+        repeats=max(5, args.repeats),
+        warmup_runs=max(1, args.warmup_runs),
     )
 
 
